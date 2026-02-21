@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login — Financeiro App</title>
+    <meta name="description" content="Acesso ao painel de gestão financeira." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet" />
+    <style>
+        :root {
+            --bg: #0a0f1e;
+            --card: #111827;
+            --border: rgba(255, 255, 255, 0.08);
+            --text: #f1f5f9;
+            --muted: #94a3b8;
+            --dim: #64748b;
+            --blue: #3b82f6;
+            --blue-dim: rgba(59, 130, 246, 0.15);
+            --red: #f43f5e;
+            --red-dim: rgba(244, 63, 94, 0.12);
+            --green: #10b981;
+            --gold: #d4af37;
+            --gold-dim: rgba(212, 175, 55, 0.15);
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Fundo animado com gradiente */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 60% 50% at 20% 30%, rgba(59, 130, 246, 0.08) 0%, transparent 60%),
+                radial-gradient(ellipse 50% 40% at 80% 70%, rgba(212, 175, 55, 0.07) 0%, transparent 60%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Grid decorativo de fundo */
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+            background-size: 50px 50px;
+            z-index: 0;
+        }
+
+        /* Card de login */
+        .login-wrapper {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 420px;
+            padding: 16px;
+        }
+
+        .login-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 44px 40px;
+            box-shadow:
+                0 20px 60px rgba(0, 0, 0, 0.5),
+                0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+            animation: card-in 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes card-in {
+            from {
+                transform: translateY(30px) scale(0.96);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+        }
+
+        /* Logo */
+        .login-logo {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 36px;
+            gap: 14px;
+        }
+
+        .login-logo .logo-ring {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            border: 1.5px solid rgba(212, 175, 55, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(212, 175, 55, 0.06);
+            box-shadow: 0 0 0 8px rgba(212, 175, 55, 0.04);
+        }
+
+        .login-logo img {
+            width: 52px;
+            height: 52px;
+            object-fit: contain;
+            filter: drop-shadow(0 0 8px rgba(212, 175, 55, 0.4));
+        }
+
+        .login-logo h1 {
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: -0.3px;
+        }
+
+        .login-logo p {
+            font-size: 13px;
+            color: var(--muted);
+            margin-top: -10px;
+        }
+
+        /* Formulário */
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--muted);
+            margin-bottom: 7px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 16px;
+            pointer-events: none;
+        }
+
+        input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text);
+            padding: 12px 14px 12px 42px;
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+        }
+
+        input:focus {
+            border-color: var(--blue);
+            background: var(--blue-dim);
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+        }
+
+        input::placeholder {
+            color: var(--dim);
+        }
+
+        /* Toggle mostrar senha */
+        .toggle-senha {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--dim);
+            cursor: pointer;
+            font-size: 16px;
+            padding: 4px;
+            transition: color 0.2s;
+        }
+
+        .toggle-senha:hover {
+            color: var(--muted);
+        }
+
+        /* Botão entrar */
+        .btn-login {
+            width: 100%;
+            padding: 13px;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: #fff;
+            font-size: 15px;
+            font-weight: 700;
+            font-family: 'Inter', sans-serif;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: all 0.2s;
+            box-shadow: 0 4px 16px rgba(59, 130, 246, 0.35);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-login:hover:not(:disabled) {
+            filter: brightness(1.12);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.45);
+        }
+
+        .btn-login:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Loading spinner */
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            display: none;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Mensagem de erro */
+        .erro-msg {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            background: var(--red-dim);
+            border: 1px solid rgba(244, 63, 94, 0.25);
+            border-radius: 8px;
+            padding: 11px 14px;
+            font-size: 13px;
+            color: var(--red);
+            margin-top: 16px;
+            animation: shake 0.35s ease;
+        }
+
+        .erro-msg.show {
+            display: flex;
+        }
+
+        @keyframes shake {
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            25% {
+                transform: translateX(-6px);
+            }
+
+            75% {
+                transform: translateX(6px);
+            }
+        }
+
+        /* Rodapé */
+        .login-footer {
+            margin-top: 28px;
+            text-align: center;
+            font-size: 12px;
+            color: var(--dim);
+        }
+
+        .login-footer a {
+            color: var(--blue);
+            text-decoration: none;
+        }
+
+        @media (max-width: 480px) {
+            .login-card {
+                padding: 32px 24px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="login-wrapper">
+        <div class="login-card">
+
+            <!-- Logo -->
+            <div class="login-logo">
+                <div class="logo-ring">
+                    <img src="logo.png" alt="Logo Financeiro" />
+                </div>
+                <h1>Financeiro App</h1>
+                <p>Gestão Financeira Inteligente</p>
+            </div>
+
+            <!-- Formulário -->
+            <form id="form-login" onsubmit="efetuarLogin(event)" novalidate>
+
+                <div class="form-group">
+                    <label for="email">E-mail</label>
+                    <div class="input-wrapper">
+                        <span class="input-icon">✉️</span>
+                        <input type="email" id="email" name="email" placeholder="seu@email.com" autocomplete="email"
+                            required />
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="senha">Senha</label>
+                    <div class="input-wrapper">
+                        <span class="input-icon">🔑</span>
+                        <input type="password" id="senha" name="senha" placeholder="••••••••"
+                            autocomplete="current-password" required />
+                        <button type="button" class="toggle-senha" onclick="toggleSenha()"
+                            title="Mostrar/ocultar senha">
+                            👁️
+                        </button>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; margin-top: -8px; margin-bottom: 16px;">
+                    <a href="#" onclick="toggleEsqueciSenha(true)"
+                        style="font-size: 12px; color: var(--dim); text-decoration: none; transition: color 0.2s;">Esqueceu
+                        a senha?</a>
+                </div>
+
+                <button type="submit" class="btn-login" id="btn-login">
+                    <span id="btn-texto">Entrar no sistema</span>
+                    <div class="spinner" id="spinner"></div>
+                </button>
+
+                <div class="erro-msg" id="erro-msg">
+                    <span>⚠️</span>
+                    <span id="erro-texto">E-mail ou senha incorretos.</span>
+                </div>
+            </form>
+
+            <!-- Formulário Esqueci a Senha -->
+            <form id="form-recuperar" onsubmit="recuperarSenha(event)" novalidate style="display: none;">
+                <p
+                    style="font-size: 13px; color: var(--dim); margin-bottom: 20px; line-height: 1.5; text-align: center;">
+                    Digite seu e-mail registrado. Se ele constar no sistema, enviaremos as instruções para a redefinição
+                    de segurança.
+                </p>
+
+                <div class="form-group">
+                    <label for="email-rec</label...">E-mail de Recuperação</label>
+                    <div class="input-wrapper">
+                        <span class="input-icon">✉️</span>
+                        <input type="email" id="email-rec" placeholder="seu@email.com" required />
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-login" id="btn-recuperar" style="margin-bottom: 12px;">
+                    <span id="btn-texto-rec">Enviar instruções</span>
+                    <div class="spinner" id="spinner-rec"></div>
+                </button>
+
+                <div style="text-align: center;">
+                    <a href="#" onclick="toggleEsqueciSenha(false)"
+                        style="font-size: 12px; color: var(--blue); text-decoration: none;">&larr; Voltar para Login</a>
+                </div>
+
+                <div class="erro-msg" id="erro-msg-rec">
+                    <span></span>
+                    <span id="erro-texto-rec"></span>
+                </div>
+            </form>
+
+            <div class="login-footer">
+                <p>© 2025 Financeiro App · <a href="https://www.oliveiravittae.com.br"
+                        target="_blank">oliveiravittae.com.br</a></p>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // Verificar se já está logado
+        fetch('/auth/me', { credentials: 'include' })
+            .then(r => r.json())
+            .then(d => { if (d.sucesso) window.location.href = '/'; })
+            .catch(() => { });
+
+        async function efetuarLogin(e) {
+            e.preventDefault();
+
+            const email = document.getElementById('email').value.trim();
+            const senha = document.getElementById('senha').value;
+            const btnTexto = document.getElementById('btn-texto');
+            const spinner = document.getElementById('spinner');
+            const btn = document.getElementById('btn-login');
+            const erroMsg = document.getElementById('erro-msg');
+            const erroTxt = document.getElementById('erro-texto');
+
+            // Esconder erro anterior
+            erroMsg.classList.remove('show');
+
+            // Estado de loading
+            btn.disabled = true;
+            btnTexto.textContent = 'Verificando...';
+            spinner.style.display = 'block';
+
+            try {
+                const res = await fetch('/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ email, senha })
+                });
+
+                const dados = await res.json();
+
+                if (dados.sucesso) {
+                    btnTexto.textContent = '✅ Bem-vindo!';
+                    spinner.style.display = 'none';
+                    setTimeout(() => window.location.href = '/', 600);
+                } else {
+                    throw new Error(dados.erro || 'E-mail ou senha incorretos.');
+                }
+
+            } catch (err) {
+                erroTxt.textContent = err.message;
+                erroMsg.classList.add('show');
+                btn.disabled = false;
+                btnTexto.textContent = 'Entrar no sistema';
+                spinner.style.display = 'none';
+            }
+        }
+
+        function toggleSenha() {
+            const input = document.getElementById('senha');
+            input.type = input.type === 'password' ? 'text' : 'password';
+        }
+
+        function toggleEsqueciSenha(mostrarRecuperar) {
+            document.getElementById('form-login').style.display = mostrarRecuperar ? 'none' : 'block';
+            document.getElementById('form-recuperar').style.display = mostrarRecuperar ? 'block' : 'none';
+            // Reseta alertas
+            document.getElementById('erro-msg').classList.remove('show');
+            document.getElementById('erro-msg-rec').classList.remove('show');
+        }
+
+        async function recuperarSenha(e) {
+            e.preventDefault();
+            const email = document.getElementById('email-rec').value.trim();
+            const btnTxt = document.getElementById('btn-texto-rec');
+            const spinner = document.getElementById('spinner-rec');
+            const btn = document.getElementById('btn-recuperar');
+            const erroMsg = document.getElementById('erro-msg-rec');
+            const erroTxt = document.getElementById('erro-texto-rec');
+
+            if (!email) return;
+
+            erroMsg.classList.remove('show');
+            btn.disabled = true;
+            btnTxt.textContent = 'Enviando...';
+            spinner.style.display = 'block';
+
+            try {
+                const res = await fetch('/auth/recuperar-senha', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+
+                const dados = await res.json();
+
+                erroMsg.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+                erroMsg.style.background = 'rgba(16, 185, 129, 0.1)';
+                erroMsg.style.color = 'var(--green)';
+                erroTxt.textContent = dados.mensagem || 'Se o e-mail existir, um link de recuperação será enviado para a caixa de entrada.';
+                erroMsg.querySelector('span').textContent = '✅';
+                erroMsg.classList.add('show');
+
+            } catch (err) {
+                // Tratamento de fallback
+            } finally {
+                btn.disabled = false;
+                btnTxt.textContent = 'Enviar instruções';
+                spinner.style.display = 'none';
+            }
+        }
+    </script>
+
+</body>
+
+</html>

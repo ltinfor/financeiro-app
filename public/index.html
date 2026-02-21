@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Oliveira Vittae — Dashboard Financeiro</title>
+  <meta name="description"
+    content="Dashboard financeiro com controle de receitas, despesas, contas a pagar/receber, fluxo de caixa e DRE simplificado." />
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0a0f1e" id="meta-theme-color">
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
+</head>
+
+<body>
+
+  <div class="app-layout">
+
+    <!-- ══════════════════════════════════════════
+       SIDEBAR
+  ══════════════════════════════════════════ -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-icon">
+          <img src="logo.png" alt="Logo"
+            style="width:34px;height:34px;object-fit:contain;filter:drop-shadow(0 0 4px rgba(212,175,55,0.5));" />
+        </div>
+        <div>
+          <h1 style="font-size:14px;line-height:1.2">Oliveira Vittae</h1>
+          <span style="font-size:10px">Engenharia &amp; Longevidade</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-group-label">Principal</div>
+        <button class="nav-item active" data-page="dashboard" onclick="navegarPara('dashboard', this)">
+          <span class="icon">📊</span> Dashboard
+        </button>
+
+        <div class="nav-group-label">Lançamentos</div>
+        <button class="nav-item" data-page="receitas" onclick="navegarPara('receitas', this)">
+          <span class="icon">📈</span> Receitas
+        </button>
+        <button class="nav-item" data-page="despesas" onclick="navegarPara('despesas', this)">
+          <span class="icon">📉</span> Despesas
+        </button>
+        <button class="nav-item" data-page="clientes" onclick="navegarPara('clientes', this)"><span
+            class="icon">👥</span>
+          Clientes</button>
+
+        <div class="nav-group-label">Financeiro</div>
+        <button class="nav-item" data-page="contas" onclick="navegarPara('contas', this)">
+          <span class="icon">🗂️</span> Contas a Pagar/Receber
+        </button>
+        <button class="nav-item" data-page="fluxo" onclick="navegarPara('fluxo', this)">
+          <span class="icon">💵</span> Fluxo de Caixa
+        </button>
+        <button class="nav-item" data-page="dre" onclick="navegarPara('dre', this)">
+          <span class="icon">📋</span> DRE Simplificado
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <p
+          style="font-size:11px;color:var(--text-dim);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;">
+          Filtrar por</p>
+        <div class="tipo-toggle">
+          <button id="btn-todos" class="active" onclick="filtrarTipo('todos', this)">Todos</button>
+          <button id="btn-pessoal" onclick="filtrarTipo('pessoal', this)">Pessoal</button>
+          <button id="btn-emp" onclick="filtrarTipo('empresarial', this)">Empresa</button>
+          <button id="btn-outros" onclick="filtrarTipo('outros', this)">Outros</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ══════════════════════════════════════════
+       MAIN
+  ══════════════════════════════════════════ -->
+    <div class="main">
+
+      <!-- Header -->
+      <header class="header">
+        <div style="display: flex; align-items: center; gap: 16px;">
+          <button class="btn-menu-mobile" onclick="toggleSidebar()" aria-label="Abrir Menu">☰</button>
+          <div class="header-title">
+            <h2 id="header-titulo">Dashboard</h2>
+            <p id="header-sub">Visão geral das suas finanças</p>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button id="btn-theme-toggle"
+            style="background:transparent; border:none; font-size:20px; color:var(--text-muted); padding:4px"
+            onclick="toggleTheme()" title="Mudar Tema">🌙</button>
+
+          <button id="btn-notifications"
+            style="background:transparent; border:none; font-size:20px; color:var(--text-muted); padding:4px; position:relative"
+            title="Alertas">
+            🔔<span id="notif-badge"
+              style="position:absolute; top:-2px; right:-2px; background:var(--red); color:#fff; font-size:10px; padding:2px 5px; border-radius:10px; display:none; font-weight:700">0</span>
+          </button>
+
+          <span class="badge-status online" id="status-badge">
+            <span class="dot"></span> Online
+          </span>
+          <span style="font-size:13px;color:var(--text-muted)" id="mes-atual"></span>
+          <span id="usuario-nome"
+            style="font-size:13px;color:var(--text-muted);padding:0 10px;border-left:1px solid var(--border);margin-left:4px"></span>
+          <button onclick="efetuarLogout()"
+            style="background:var(--red-dim);color:var(--red);border:1px solid rgba(244,63,94,0.2);border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:background 0.2s"
+            onmouseover="this.style.background='rgba(244,63,94,0.22)'"
+            onmouseout="this.style.background='var(--red-dim)'">
+            🚪 Sair
+          </button>
+        </div>
+      </header>
+
+      <!-- ─────────────────────────────────────────
+         PÁGINA: DASHBOARD
+    ───────────────────────────────────────── -->
+      <section class="page active" id="page-dashboard">
+
+        <!-- KPI Cards -->
+        <div class="kpi-grid">
+          <div class="kpi-card green">
+            <div class="kpi-header">
+              <span class="kpi-label">Total Receitas (mês)</span>
+              <div class="kpi-icon green">📥</div>
+            </div>
+            <div class="kpi-value" id="kpi-receitas">R$ —</div>
+            <div class="kpi-sub" id="kpi-receitas-sub">Carregando...</div>
+          </div>
+
+          <div class="kpi-card red">
+            <div class="kpi-header">
+              <span class="kpi-label">Total Despesas (mês)</span>
+              <div class="kpi-icon red">📤</div>
+            </div>
+            <div class="kpi-value" id="kpi-despesas">R$ —</div>
+            <div class="kpi-sub" id="kpi-despesas-sub">Carregando...</div>
+          </div>
+
+          <div class="kpi-card blue">
+            <div class="kpi-header">
+              <span class="kpi-label">Saldo do Mês</span>
+              <div class="kpi-icon blue">⚖️</div>
+            </div>
+            <div class="kpi-value" id="kpi-saldo">R$ —</div>
+            <div class="kpi-sub" id="kpi-saldo-sub">Receitas − Despesas pagas</div>
+          </div>
+
+          <div class="kpi-card gold">
+            <div class="kpi-header">
+              <span class="kpi-label">Contas a Vencer</span>
+              <div class="kpi-icon gold">⏰</div>
+            </div>
+            <div class="kpi-value" id="kpi-contas">R$ —</div>
+            <div class="kpi-sub" id="kpi-contas-sub">Carregando...</div>
+          </div>
+        </div>
+
+        <!-- Gráficos -->
+        <div class="charts-grid">
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <div class="card-title">Receitas × Despesas</div>
+                <div class="card-sub">Últimos 6 meses</div>
+              </div>
+            </div>
+            <div class="chart-container" style="height:260px">
+              <canvas id="grafico-barras"></canvas>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <div class="card-title">Despesas por Categoria</div>
+                <div class="card-sub">Mês atual</div>
+              </div>
+            </div>
+            <div class="chart-container" style="height:260px">
+              <canvas id="grafico-rosca"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Últimas Transações -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Últimas Transações</div>
+            <button class="btn btn-primary" onclick="abrirModalDespesa()">+ Nova Despesa</button>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Descrição</th>
+                  <th>Categoria</th>
+                  <th>Tipo</th>
+                  <th>Valor</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="tabela-transacoes">
+                <tr>
+                  <td colspan="6">
+                    <div class="skeleton" style="margin:12px 0"></div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─────────────────────────────────────────
+         PÁGINA: RECEITAS
+    ───────────────────────────────────────── -->
+      <section class="page" id="page-receitas">
+        <div class="card">
+          <div class="card-header" style="flex-wrap: wrap; gap:10px">
+            <div class="card-title">Receitas</div>
+            <div style="display:flex; gap:10px; align-items:center;">
+              <input type="date" id="filtro-r-inicio" style="padding:6px 10px; font-size:12px" title="Data Inicial" />
+              <span style="font-size:12px;color:var(--text-muted)">até</span>
+              <input type="date" id="filtro-r-fim" style="padding:6px 10px; font-size:12px" title="Data Final" />
+              <button class="btn btn-ghost" style="padding:6px 12px; font-size:12px"
+                onclick="carregarReceitas()">Filtrar</button>
+              <button class="btn btn-success" onclick="abrirModalReceita()">+ Nova Receita</button>
+            </div>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Descrição</th>
+                  <th>Categoria</th>
+                  <th>Tipo</th>
+                  <th>Valor</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="tabela-receitas">
+                <tr>
+                  <td colspan="6" class="empty-state">
+                    <div class="icon">📭</div>
+                    <p>Nenhuma receita cadastrada</p>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─────────────────────────────────────────
+         PÁGINA: DESPESAS
+    ───────────────────────────────────────── -->
+      <section class="page" id="page-despesas">
+        <div class="card">
+          <div class="card-header" style="flex-wrap: wrap; gap:10px">
+            <div class="card-title">Despesas</div>
+            <div style="display:flex; gap:10px; align-items:center;">
+              <input type="date" id="filtro-d-inicio" style="padding:6px 10px; font-size:12px" title="Data Inicial" />
+              <span style="font-size:12px;color:var(--text-muted)">até</span>
+              <input type="date" id="filtro-d-fim" style="padding:6px 10px; font-size:12px" title="Data Final" />
+              <button class="btn btn-ghost" style="padding:6px 12px; font-size:12px"
+                onclick="carregarDespesas()">Filtrar</button>
+              <button class="btn btn-danger" onclick="abrirModalDespesa()">+ Nova Despesa</button>
+            </div>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Descrição</th>
+                  <th>Categoria</th>
+                  <th>Tipo</th>
+                  <th>Valor</th>
+                  <th>Status</th>
+                  <th>Recibo</th>
+                </tr>
+              </thead>
+              <tbody id="tabela-despesas">
+                <tr>
+                  <td colspan="7" class="empty-state">
+                    <div class="icon">📭</div>
+                    <p>Nenhuma despesa cadastrada</p>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─────────────────────────────────────────
+         PÁGINA: CONTAS
+    ───────────────────────────────────────── -->
+      <section class="page" id="page-contas">
+        <!-- Banner de alertas de vencimento -->
+        <div id="banner-alertas-contas"></div>
+
+        <div class="kpi-grid" style="grid-template-columns:1fr 1fr;margin-bottom:20px">
+          <div class="kpi-card red">
+            <div class="kpi-header"><span class="kpi-label">A Pagar</span>
+              <div class="kpi-icon red">💸</div>
+            </div>
+            <div class="kpi-value" id="kpi-a-pagar">R$ —</div>
+            <div class="kpi-sub" id="kpi-atrasadas">— em atraso</div>
+          </div>
+          <div class="kpi-card green">
+            <div class="kpi-header"><span class="kpi-label">A Receber</span>
+              <div class="kpi-icon green">💰</div>
+            </div>
+            <div class="kpi-value" id="kpi-a-receber">R$ —</div>
+            <div class="kpi-sub">Pendente de recebimento</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header" style="flex-wrap:wrap; gap:10px">
+            <div class="card-title">Contas a Pagar / Receber</div>
+            <div style="display:flex; gap:10px; align-items:center;">
+              <button class="btn btn-success" id="btn-pagar-lote" style="display:none;" onclick="marcarSelecionadas()">✔
+                Pagar Marcadas</button>
+              <button class="btn btn-primary" onclick="abrirModalConta()">+ Nova Conta</button>
+            </div>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 30px"><input type="checkbox" id="checkbox-todas"
+                      onclick="toggleTodasContas(this)" /></th>
+                  <th>Vencimento</th>
+                  <th>Descrição</th>
+                  <th>Tipo</th>
+                  <th>Valor</th>
+                  <th>Status</th>
+                  <th>Ação</th>
+                </tr>
+              </thead>
+              <tbody id="tabela-contas">
+                <tr>
+                  <td colspan="6" class="empty-state">
+                    <div class="icon">📭</div>
+                    <p>Nenhuma conta cadastrada</p>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─────────────────────────────────────────
+         PÁGINA: FLUXO DE CAIXA
+    ───────────────────────────────────────── -->
+      <section class="page" id="page-fluxo">
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-header" style="justify-content:space-between; display:flex">
+            <div>
+              <div class="card-title">Fluxo de Caixa</div>
+              <div class="card-sub">Saldo acumulado por mês</div>
+            </div>
+            <div style="display:flex;gap:12px;align-items:center">
+              <button class="btn btn-ghost" onclick="exportarCSV()">📥 Exportar CSV</button>
+              <div class="kpi-value" id="saldo-total" style="font-size:22px;margin:0;min-width:140px;text-align:right">
+                R$ —</div>
+            </div>
+          </div>
+          <div class="chart-container" style="height:300px">
+            <canvas id="grafico-fluxo"></canvas>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Detalhamento Mensal</div>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Mês</th>
+                  <th>Tipo</th>
+                  <th>Receitas</th>
+                  <th>Despesas</th>
+                  <th>Saldo</th>
+                </tr>
+              </thead>
+              <tbody id="tabela-fluxo"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─────────────────────────────────────────
+         PÁGINA: DRE
+    ───────────────────────────────────────── -->
+      <section class="page" id="page-dre">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">DRE — Demonstração do Resultado do Exercício</div>
+              <div class="card-sub">Lucro/Prejuízo mensal por categoria</div>
+            </div>
+          </div>
+          <div id="dre-container">
+            <div class="empty-state">
+              <div class="icon">📋</div>
+              <p>Selecione um período para visualizar o DRE</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─────────────────────────────────────────
+         PÁGINA: CLIENTES
+     ───────────────────────────────────────── -->
+      <section class="page" id="page-clientes">
+        <!-- Barra de pesquisa e ação -->
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Clientes</div>
+              <div class="card-sub">Cadastro e histórico de clientes</div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center">
+              <input type="text" id="clientes-busca" placeholder="🔍 Buscar por nome, CPF/CNPJ, e-mail ou telefone..."
+                oninput="buscarClientes(this.value)"
+                style="padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg-primary);color:var(--text);font-size:13px;width:320px;outline:none" />
+              <select id="clientes-status-filtro" onchange="carregarClientes()"
+                style="padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-primary);color:var(--text);font-size:13px;outline:none">
+                <option value="">Todos os Status</option>
+                <option value="ativo">Ativos</option>
+                <option value="inativo">Inativos</option>
+              </select>
+              <button class="btn btn-primary" onclick="abrirModalCliente()">+ Novo Cliente</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- KPIs de Clientes -->
+        <div class="kpi-grid" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:20px" id="clientes-kpis">
+          <div class="kpi-card blue">
+            <div class="kpi-header"><span class="kpi-label">Total de Clientes</span>
+              <div class="kpi-icon blue">👥</div>
+            </div>
+            <div class="kpi-value" id="kpi-clientes-total">—</div>
+            <div class="kpi-sub">Cadastrados</div>
+          </div>
+          <div class="kpi-card green">
+            <div class="kpi-header"><span class="kpi-label">Ativos</span>
+              <div class="kpi-icon green">✅</div>
+            </div>
+            <div class="kpi-value" id="kpi-clientes-ativos">—</div>
+            <div class="kpi-sub">Em operação</div>
+          </div>
+          <div class="kpi-card gold">
+            <div class="kpi-header"><span class="kpi-label">Inativos</span>
+              <div class="kpi-icon gold">⏸️</div>
+            </div>
+            <div class="kpi-value" id="kpi-clientes-inativos">—</div>
+            <div class="kpi-sub">Sem movimentação</div>
+          </div>
+        </div>
+
+        <!-- Tabela de Clientes -->
+        <div class="card">
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Nome</th>
+                  <th>Tipo</th>
+                  <th>CPF / CNPJ</th>
+                  <th>Telefone</th>
+                  <th>Cidade / UF</th>
+                  <th>Status</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tabela-clientes">
+                <tr>
+                  <td colspan="7" class="empty-state">
+                    <div class="icon">👥</div>
+                    <p>Nenhum cliente cadastrado</p>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </div><!-- /main -->
+  </div><!-- /app-layout -->
+
+  <!-- ══════════════════════════════════════════
+     MODAL: NOVA DESPESA
+══════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-despesa">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">➕ Nova Despesa</span>
+        <button class="btn-close" onclick="fecharModal('modal-despesa')">✕</button>
+      </div>
+      <form id="form-despesa" onsubmit="salvarDespesa(event)">
+        <div class="form-grid">
+          <div class="form-group full">
+            <label for="d-descricao">Descrição *</label>
+            <input type="text" id="d-descricao" placeholder="Ex: Aluguel de outubro" required />
+          </div>
+          <div class="form-group">
+            <label for="d-valor">Valor (R$) *</label>
+            <input type="number" id="d-valor" step="0.01" min="0.01" placeholder="0,00" required />
+          </div>
+          <div class="form-group">
+            <label for="d-data">Data *</label>
+            <input type="date" id="d-data" required />
+          </div>
+          <div class="form-group">
+            <label for="d-tipo">Tipo *</label>
+            <select id="d-tipo" onchange="carregarCategorias('despesa', 'd-categoria', this.value)">
+              <option value="pessoal">Pessoal</option>
+              <option value="empresarial">Empresarial</option>
+              <option value="outros">Outros</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="d-categoria">Categoria *</label>
+            <select id="d-categoria" required></select>
+          </div>
+          <div class="form-group">
+            <label for="d-status">Status</label>
+            <select id="d-status">
+              <option value="pendente">Pendente</option>
+              <option value="pago">Pago</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="d-fornecedor">Fornecedor</label>
+            <input type="text" id="d-fornecedor" placeholder="Nome do fornecedor" />
+          </div>
+          <div class="form-group">
+            <label for="d-recibo">Recibo / Anexo</label>
+            <input type="file" id="d-recibo" accept="image/*,.pdf" />
+          </div>
+          <div class="form-group full">
+            <label for="d-obs">Observações</label>
+            <textarea id="d-obs" rows="2" placeholder="Observações adicionais..."></textarea>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" onclick="fecharModal('modal-despesa')">Cancelar</button>
+          <button type="submit" class="btn btn-danger" id="btn-salvar-despesa">💾 Salvar Despesa</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+     MODAL: NOVA RECEITA
+══════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-receita">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">➕ Nova Receita</span>
+        <button class="btn-close" onclick="fecharModal('modal-receita')">✕</button>
+      </div>
+      <form id="form-receita" onsubmit="salvarReceita(event)">
+        <div class="form-grid">
+          <div class="form-group full">
+            <label for="r-descricao">Descrição *</label>
+            <input type="text" id="r-descricao" placeholder="Ex: Venda de outubro" required />
+          </div>
+          <div class="form-group">
+            <label for="r-valor">Valor (R$) *</label>
+            <input type="number" id="r-valor" step="0.01" min="0.01" placeholder="0,00" required />
+          </div>
+          <div class="form-group">
+            <label for="r-data">Data *</label>
+            <input type="date" id="r-data" required />
+          </div>
+          <div class="form-group">
+            <label for="r-tipo">Tipo *</label>
+            <select id="r-tipo" onchange="carregarCategorias('receita', 'r-categoria', this.value)">
+              <option value="pessoal">Pessoal</option>
+              <option value="empresarial">Empresarial</option>
+              <option value="outros">Outros</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="r-categoria">Categoria *</label>
+            <select id="r-categoria" required></select>
+          </div>
+          <div class="form-group">
+            <label for="r-status">Status</label>
+            <select id="r-status">
+              <option value="pendente">Pendente</option>
+              <option value="recebido">Recebido</option>
+            </select>
+          </div>
+          <div class="form-group full">
+            <label for="r-obs">Observações</label>
+            <textarea id="r-obs" rows="2" placeholder="Observações adicionais..."></textarea>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" onclick="fecharModal('modal-receita')">Cancelar</button>
+          <button type="submit" class="btn btn-success">💾 Salvar Receita</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+     MODAL: NOVA CONTA
+══════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-conta">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">➕ Nova Conta</span>
+        <button class="btn-close" onclick="fecharModal('modal-conta')">✕</button>
+      </div>
+      <form id="form-conta" onsubmit="salvarConta(event)">
+        <div class="form-grid">
+          <div class="form-group full">
+            <label for="c-descricao">Descrição *</label>
+            <input type="text" id="c-descricao" placeholder="Ex: Boleto de fornecedor" required />
+          </div>
+          <div class="form-group">
+            <label for="c-valor">Valor (R$) *</label>
+            <input type="number" id="c-valor" step="0.01" min="0.01" placeholder="0,00" required />
+          </div>
+          <div class="form-group">
+            <label for="c-vencimento">Vencimento *</label>
+            <input type="date" id="c-vencimento" required />
+          </div>
+          <div class="form-group">
+            <label for="c-tipo-conta">Tipo de Conta *</label>
+            <select id="c-tipo-conta">
+              <option value="pagar">A Pagar</option>
+              <option value="receber">A Receber</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="c-tipo">Origem *</label>
+            <select id="c-tipo">
+              <option value="pessoal">Pessoal</option>
+              <option value="empresarial">Empresarial</option>
+              <option value="outros">Outros</option>
+            </select>
+          </div>
+          <div class="form-group full">
+            <label for="c-obs">Observações</label>
+            <textarea id="c-obs" rows="2" placeholder="Observações adicionais..."></textarea>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" onclick="fecharModal('modal-conta')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">💾 Salvar Conta</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+     MODAL: CLIENTE (Novo / Editar)
+══════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-cliente">
+    <div class="modal" style="max-width:720px">
+      <div class="modal-header">
+        <span class="modal-title" id="modal-cliente-titulo">➕ Novo Cliente</span>
+        <button class="btn-close" onclick="fecharModal('modal-cliente')">✕</button>
+      </div>
+      <form id="form-cliente" onsubmit="salvarCliente(event)">
+        <input type="hidden" id="cli-id" />
+
+        <!-- Dados Pessoais -->
+        <div
+          style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">
+          Dados Pessoais</div>
+        <div class="form-grid">
+          <div class="form-group full">
+            <label for="cli-nome">Nome / Razão Social *</label>
+            <input type="text" id="cli-nome" placeholder="Ex: João da Silva" required />
+          </div>
+          <div class="form-group">
+            <label for="cli-tipo">Tipo de Pessoa *</label>
+            <select id="cli-tipo">
+              <option value="fisica">Pessoa Física</option>
+              <option value="juridica">Pessoa Jurídica</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="cli-cpf">CPF / CNPJ</label>
+            <input type="text" id="cli-cpf" placeholder="000.000.000-00" />
+          </div>
+          <div class="form-group">
+            <label for="cli-email">E-mail</label>
+            <input type="email" id="cli-email" placeholder="cliente@email.com" />
+          </div>
+          <div class="form-group">
+            <label for="cli-telefone">Telefone</label>
+            <input type="text" id="cli-telefone" placeholder="(00) 0000-0000" />
+          </div>
+          <div class="form-group">
+            <label for="cli-whatsapp">WhatsApp</label>
+            <input type="text" id="cli-whatsapp" placeholder="(00) 00000-0000" />
+          </div>
+          <div class="form-group">
+            <label for="cli-status">Status</label>
+            <select id="cli-status">
+              <option value="ativo">Ativo</option>
+              <option value="inativo">Inativo</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Endereço -->
+        <div
+          style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin:16px 0 12px">
+          Endereço</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="cli-cep">CEP</label>
+            <input type="text" id="cli-cep" placeholder="00000-000" oninput="buscarCEP(this.value)" maxlength="9" />
+          </div>
+          <div class="form-group full">
+            <label for="cli-logradouro">Logradouro</label>
+            <input type="text" id="cli-logradouro" placeholder="Rua, Av., etc." />
+          </div>
+          <div class="form-group">
+            <label for="cli-numero">Número</label>
+            <input type="text" id="cli-numero" placeholder="123" />
+          </div>
+          <div class="form-group">
+            <label for="cli-complemento">Complemento</label>
+            <input type="text" id="cli-complemento" placeholder="Apto, sala, etc." />
+          </div>
+          <div class="form-group">
+            <label for="cli-bairro">Bairro</label>
+            <input type="text" id="cli-bairro" placeholder="Centro" />
+          </div>
+          <div class="form-group">
+            <label for="cli-cidade">Cidade</label>
+            <input type="text" id="cli-cidade" placeholder="São Paulo" />
+          </div>
+          <div class="form-group">
+            <label for="cli-estado">Estado (UF)</label>
+            <select id="cli-estado">
+              <option value="">— UF —</option>
+              <option>AC</option>
+              <option>AL</option>
+              <option>AP</option>
+              <option>AM</option>
+              <option>BA</option>
+              <option>CE</option>
+              <option>DF</option>
+              <option>ES</option>
+              <option>GO</option>
+              <option>MA</option>
+              <option>MT</option>
+              <option>MS</option>
+              <option>MG</option>
+              <option>PA</option>
+              <option>PB</option>
+              <option>PR</option>
+              <option>PE</option>
+              <option>PI</option>
+              <option>RJ</option>
+              <option>RN</option>
+              <option>RS</option>
+              <option>RO</option>
+              <option>RR</option>
+              <option>SC</option>
+              <option>SP</option>
+              <option>SE</option>
+              <option>TO</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Observações -->
+        <div
+          style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin:16px 0 12px">
+          Observações</div>
+        <div class="form-grid">
+          <div class="form-group full">
+            <textarea id="cli-obs" rows="3" placeholder="Informações adicionais sobre o cliente..."></textarea>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" onclick="fecharModal('modal-cliente')">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btn-salvar-cliente">💾 Salvar Cliente</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="dashboard.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,100 @@
+﻿node : (node:1324) [MO
+DULE_TYPELESS_PACKAGE_
+JSON] Warning: Module 
+type of file:///C:/Use
+rs/luisc/Projetos/Fina
+nceiro/financeiro-app/
+server.js is not 
+specified and it 
+doesn't parse as 
+CommonJS.
+No linha:1 caractere:1
++ node server.js 2>&1 
+| Out-File -FilePath 
+err.txt -Encoding 
+utf8; Get- ...
++ ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo    
+          : NotSpeci  
+  fied: ((node:1324   
+ ) [MO...se as Com    
+monJS.:String) []    
+, RemoteException
+    + FullyQualifiedE 
+   rrorId : NativeCo  
+  mmandError
+ 
+Reparsing as ES 
+module because module 
+syntax was detected. 
+This incurs a 
+performance overhead.
+To eliminate this 
+warning, add "type": 
+"module" to C:\Users\l
+uisc\Projetos\Financei
+ro\financeiro-app\pack
+age.json.
+(Use `node 
+--trace-warnings ...` 
+to show where the 
+warning was created)
+node:events:486
+      throw er; // 
+Unhandled 'error' 
+event
+      ^
+
+Error: listen 
+EADDRINUSE: address 
+already in use :::3000
+    at Server.setupLis
+tenHandle [as 
+_listen2] 
+(node:net:1940:16)
+    at 
+listenInCluster 
+(node:net:1997:12)
+    at Server.listen 
+(node:net:2102:7)
+    at app.listen (C:\
+Users\luisc\Projetos\F
+inanceiro\financeiro-a
+pp\node_modules\expres
+s\lib\application.js:6
+35:24)
+    at file:///C:/User
+s/luisc/Projetos/Finan
+ceiro/financeiro-app/s
+erver.js:125:5
+    at ModuleJob.run (
+node:internal/modules/
+esm/module_job:430:25)
+    at process.process
+TicksAndRejections (no
+de:internal/process/ta
+sk_queues:103:5)
+    at async onImport.
+tracePromise.__proto__
+ (node:internal/module
+s/esm/loader:661:26)
+    at async asyncRunE
+ntryPointWithESMLoader
+ (node:internal/module
+s/run_main:101:5)
+Emitted 'error' event 
+on Server instance at:
+    at emitErrorNT 
+(node:net:1976:8)
+    at process.process
+TicksAndRejections (no
+de:internal/process/ta
+sk_queues:89:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '::',
+  port: 3000
+}
+
+Node.js v24.13.1
