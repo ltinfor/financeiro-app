@@ -449,7 +449,7 @@ async function carregarUltimasTransacoes() {
 ═══════════════════════════════════════════════════════════ */
 async function carregarReceitas() {
     const tbody = document.getElementById('tabela-receitas');
-    tbody.innerHTML = `<tr><td colspan="6"><div class="skeleton"></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7"><div class="skeleton"></div></td></tr>`;
 
     let tipoParam = state.tipo !== 'todos' ? `?tipo=${state.tipo}` : '?';
     const dtInicio = document.getElementById('filtro-r-inicio').value;
@@ -461,7 +461,7 @@ async function carregarReceitas() {
     const { dados } = await apiFetch(`/api/receitas${tipoParam.replace('?&', '?')}`);
 
     if (!dados || dados.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="icon">📈</div><p>Nenhuma receita cadastrada</p></div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="icon">📈</div><p>Nenhuma receita cadastrada</p></div></td></tr>`;
         return;
     }
 
@@ -473,6 +473,9 @@ async function carregarReceitas() {
       <td>${tipoBadge(r.tipo)}</td>
       <td style="color:var(--green);font-weight:600">${fmt(r.valor)}</td>
       <td>${statusBadge(r.status)}</td>
+      <td>
+        <button class="btn btn-ghost" style="padding:4px 10px;font-size:12px" onclick='editarReceita(${JSON.stringify(r).replace(/'/g, "&#39;")})'>✏️ Editar</button>
+      </td>
     </tr>
   `).join('');
 }
@@ -482,7 +485,7 @@ async function carregarReceitas() {
 ═══════════════════════════════════════════════════════════ */
 async function carregarDespesas() {
     const tbody = document.getElementById('tabela-despesas');
-    tbody.innerHTML = `<tr><td colspan="7"><div class="skeleton"></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8"><div class="skeleton"></div></td></tr>`;
 
     let tipoParam = state.tipo !== 'todos' ? `?tipo=${state.tipo}` : '?';
     const dtInicio = document.getElementById('filtro-d-inicio').value;
@@ -493,7 +496,7 @@ async function carregarDespesas() {
     const { dados } = await apiFetch(`/api/despesas${tipoParam.replace('?&', '?')}`);
 
     if (!dados || dados.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="icon">📉</div><p>Nenhuma despesa cadastrada</p></div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="icon">📉</div><p>Nenhuma despesa cadastrada</p></div></td></tr>`;
         return;
     }
 
@@ -506,6 +509,9 @@ async function carregarDespesas() {
       <td style="color:var(--red);font-weight:600">${fmt(d.valor)}</td>
       <td>${statusBadge(d.status)}</td>
       <td>${d.recibo_url ? `<a href="${d.recibo_url}" target="_blank" style="color:var(--blue)">📎 Ver</a>` : '—'}</td>
+      <td>
+        <button class="btn btn-ghost" style="padding:4px 10px;font-size:12px" onclick='editarDespesa(${JSON.stringify(d).replace(/'/g, "&#39;")})'>✏️ Editar</button>
+      </td>
     </tr>
   `).join('');
 }
@@ -632,7 +638,8 @@ async function carregarContas() {
       <td style="font-weight:600">${fmt(c.valor)}</td>
       <td>${statusBadge(statusReal)}</td>
       <td>
-        ${c.status === 'pendente' ? `<button class="btn btn-success" style="padding:5px 12px;font-size:12px" onclick="marcarPago(${c.id})">✔ Pago</button>` : '—'}
+        ${c.status === 'pendente' ? `<button class="btn btn-success" style="padding:4px 8px;font-size:12px;margin-bottom:4px" onclick="marcarPago(${c.id})">✔ Pago</button><br>` : ''}
+        <button class="btn btn-ghost" style="padding:4px 10px;font-size:12px" onclick='editarConta(${JSON.stringify(c).replace(/'/g, "&#39;")})'>✏️ Editar</button>
       </td>
     </tr>`;
     }).join('');
@@ -840,21 +847,88 @@ async function carregarCategorias(grupo, selectId, tipo) {
 ═══════════════════════════════════════════════════════════ */
 function abrirModalDespesa() {
     document.getElementById('form-despesa').reset();
+    document.getElementById('d-id').value = '';
+    document.getElementById('modal-despesa-titulo').textContent = '➕ Nova Despesa';
+    document.getElementById('btn-salvar-despesa').textContent = '💾 Salvar Despesa';
     document.getElementById('d-data').value = new Date().toISOString().split('T')[0];
     carregarCategorias('despesa', 'd-categoria', 'pessoal');
     document.getElementById('modal-despesa').classList.add('open');
 }
 
+function editarDespesa(d) {
+    document.getElementById('d-id').value = d.id;
+    document.getElementById('d-descricao').value = d.descricao || '';
+    document.getElementById('d-valor').value = d.valor || '';
+    document.getElementById('d-data').value = d.data || new Date().toISOString().split('T')[0];
+    document.getElementById('d-tipo').value = d.tipo || 'pessoal';
+
+    // Carregar categoria correta antes de setar o valor
+    carregarCategorias('despesa', 'd-categoria', d.tipo || 'pessoal').then(() => {
+        document.getElementById('d-categoria').value = d.categoria_id || '';
+    });
+
+    document.getElementById('d-status').value = d.status || 'pendente';
+    document.getElementById('d-fornecedor').value = d.fornecedor || '';
+    document.getElementById('d-obs').value = d.observacoes || '';
+
+    // Limpa arquivo anexado antes
+    document.getElementById('d-recibo').value = '';
+
+    document.getElementById('modal-despesa-titulo').textContent = '✏️ Editar Despesa';
+    document.getElementById('btn-salvar-despesa').textContent = '💾 Atualizar Despesa';
+    document.getElementById('modal-despesa').classList.add('open');
+}
+
 function abrirModalReceita() {
     document.getElementById('form-receita').reset();
+    document.getElementById('r-id').value = '';
+    document.getElementById('modal-receita-titulo').textContent = '➕ Nova Receita';
+    document.getElementById('btn-salvar-receita').textContent = '💾 Salvar Receita';
     document.getElementById('r-data').value = new Date().toISOString().split('T')[0];
     carregarCategorias('receita', 'r-categoria', 'pessoal');
     document.getElementById('modal-receita').classList.add('open');
 }
 
+function editarReceita(r) {
+    document.getElementById('r-id').value = r.id;
+    document.getElementById('r-descricao').value = r.descricao || '';
+    document.getElementById('r-valor').value = r.valor || '';
+    document.getElementById('r-data').value = r.data || new Date().toISOString().split('T')[0];
+    document.getElementById('r-tipo').value = r.tipo || 'pessoal';
+
+    // Carregar categoria correta antes de setar o valor
+    carregarCategorias('receita', 'r-categoria', r.tipo || 'pessoal').then(() => {
+        document.getElementById('r-categoria').value = r.categoria_id || '';
+    });
+
+    document.getElementById('r-status').value = r.status || 'pendente';
+    document.getElementById('r-obs').value = r.observacoes || '';
+
+    document.getElementById('modal-receita-titulo').textContent = '✏️ Editar Receita';
+    document.getElementById('btn-salvar-receita').textContent = '💾 Atualizar Receita';
+    document.getElementById('modal-receita').classList.add('open');
+}
+
 function abrirModalConta() {
     document.getElementById('form-conta').reset();
+    document.getElementById('c-id').value = '';
+    document.getElementById('modal-conta-titulo').textContent = '➕ Nova Conta';
+    document.getElementById('btn-salvar-conta').textContent = '💾 Salvar Conta';
     document.getElementById('c-vencimento').value = new Date().toISOString().split('T')[0];
+    document.getElementById('modal-conta').classList.add('open');
+}
+
+function editarConta(c) {
+    document.getElementById('c-id').value = c.id;
+    document.getElementById('c-descricao').value = c.descricao || '';
+    document.getElementById('c-valor').value = c.valor || '';
+    document.getElementById('c-vencimento').value = c.vencimento || '';
+    document.getElementById('c-tipo-conta').value = c.tipo_conta || 'pagar';
+    document.getElementById('c-tipo').value = c.tipo || 'pessoal';
+    document.getElementById('c-obs').value = c.observacoes || '';
+
+    document.getElementById('modal-conta-titulo').textContent = '✏️ Editar Conta';
+    document.getElementById('btn-salvar-conta').textContent = '💾 Atualizar Conta';
     document.getElementById('modal-conta').classList.add('open');
 }
 
@@ -878,6 +952,7 @@ async function salvarDespesa(e) {
     btn.textContent = 'Salvando...'; btn.disabled = true;
 
     try {
+        const id = document.getElementById('d-id').value;
         const formData = new FormData();
         formData.append('descricao', document.getElementById('d-descricao').value);
         formData.append('valor', document.getElementById('d-valor').value);
@@ -893,12 +968,15 @@ async function salvarDespesa(e) {
             formData.append('recibo', arquivo);
         }
 
-        const { sucesso, erro } = await apiFetch('/api/despesas', {
-            method: 'POST', body: formData
+        const url = id ? `/api/despesas/${id}` : '/api/despesas';
+        const method = id ? 'PUT' : 'POST';
+
+        const { sucesso, erro } = await apiFetch(url, {
+            method, body: formData
         });
 
         if (sucesso) {
-            toast('Despesa cadastrada com sucesso!');
+            toast(id ? 'Despesa atualizada com sucesso!' : 'Despesa cadastrada com sucesso!');
             fecharModal('modal-despesa');
             carregarDespesas();
             iniciarDashboard();
@@ -908,7 +986,9 @@ async function salvarDespesa(e) {
     } catch (err) {
         toast('Erro de conexão.', 'error');
     } finally {
-        btn.textContent = '💾 Salvar Despesa'; btn.disabled = false;
+        const id = document.getElementById('d-id').value;
+        btn.textContent = id ? '💾 Atualizar Despesa' : '💾 Salvar Despesa';
+        btn.disabled = false;
     }
 }
 
@@ -917,7 +997,11 @@ async function salvarDespesa(e) {
 ═══════════════════════════════════════════════════════════ */
 async function salvarReceita(e) {
     e.preventDefault();
+    const btn = document.getElementById('btn-salvar-receita');
+    btn.textContent = 'Salvando...'; btn.disabled = true;
+
     try {
+        const id = document.getElementById('r-id').value;
         const body = {
             descricao: document.getElementById('r-descricao').value,
             valor: document.getElementById('r-valor').value,
@@ -928,19 +1012,28 @@ async function salvarReceita(e) {
             observacoes: document.getElementById('r-obs').value
         };
 
-        const { sucesso, erro } = await apiFetch('/api/receitas', {
-            method: 'POST', body: JSON.stringify(body)
+        const url = id ? `/api/receitas/${id}` : '/api/receitas';
+        const method = id ? 'PUT' : 'POST';
+
+        const { sucesso, erro } = await apiFetch(url, {
+            method, body: JSON.stringify(body)
         });
 
         if (sucesso) {
-            toast('Receita cadastrada com sucesso!');
+            toast(id ? 'Receita atualizada com sucesso!' : 'Receita cadastrada com sucesso!');
             fecharModal('modal-receita');
             carregarReceitas();
             iniciarDashboard();
         } else {
             toast(erro || 'Erro ao salvar receita.', 'error');
         }
-    } catch { toast('Erro de conexão.', 'error'); }
+    } catch {
+        toast('Erro de conexão.', 'error');
+    } finally {
+        const id = document.getElementById('r-id').value;
+        btn.textContent = id ? '💾 Atualizar Receita' : '💾 Salvar Receita';
+        btn.disabled = false;
+    }
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -948,7 +1041,11 @@ async function salvarReceita(e) {
 ═══════════════════════════════════════════════════════════ */
 async function salvarConta(e) {
     e.preventDefault();
+    const btn = document.getElementById('btn-salvar-conta');
+    btn.textContent = 'Salvando...'; btn.disabled = true;
+
     try {
+        const id = document.getElementById('c-id').value;
         const body = {
             descricao: document.getElementById('c-descricao').value,
             valor: document.getElementById('c-valor').value,
@@ -958,18 +1055,28 @@ async function salvarConta(e) {
             observacoes: document.getElementById('c-obs').value
         };
 
-        const { sucesso, erro } = await apiFetch('/api/contas', {
-            method: 'POST', body: JSON.stringify(body)
+        const url = id ? `/api/contas/${id}` : '/api/contas';
+        const method = id ? 'PUT' : 'POST';
+
+        const { sucesso, erro } = await apiFetch(url, {
+            method, body: JSON.stringify(body)
         });
 
         if (sucesso) {
-            toast('Conta cadastrada com sucesso!');
+            toast(id ? 'Conta atualizada com sucesso!' : 'Conta cadastrada com sucesso!');
             fecharModal('modal-conta');
             carregarContas();
+            iniciarDashboard();
         } else {
             toast(erro || 'Erro ao salvar conta.', 'error');
         }
-    } catch { toast('Erro de conexão.', 'error'); }
+    } catch {
+        toast('Erro de conexão.', 'error');
+    } finally {
+        const id = document.getElementById('c-id').value;
+        btn.textContent = id ? '💾 Atualizar Conta' : '💾 Salvar Conta';
+        btn.disabled = false;
+    }
 }
 
 /* ═══════════════════════════════════════════════════════════

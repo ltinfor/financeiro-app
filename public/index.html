@@ -250,11 +250,12 @@
                   <th>Tipo</th>
                   <th>Valor</th>
                   <th>Status</th>
+                  <th>Ações</th>
                 </tr>
               </thead>
               <tbody id="tabela-receitas">
                 <tr>
-                  <td colspan="6" class="empty-state">
+                  <td colspan="7" class="empty-state">
                     <div class="icon">📭</div>
                     <p>Nenhuma receita cadastrada</p>
                   </td>
@@ -292,6 +293,7 @@
                   <th>Valor</th>
                   <th>Status</th>
                   <th>Recibo</th>
+                  <th>Ações</th>
                 </tr>
               </thead>
               <tbody id="tabela-despesas">
@@ -350,7 +352,7 @@
                   <th>Tipo</th>
                   <th>Valor</th>
                   <th>Status</th>
-                  <th>Ação</th>
+                  <th>Ações</th>
                 </tr>
               </thead>
               <tbody id="tabela-contas">
@@ -598,10 +600,11 @@
   <div class="modal-overlay" id="modal-despesa">
     <div class="modal">
       <div class="modal-header">
-        <span class="modal-title">➕ Nova Despesa</span>
+        <span class="modal-title" id="modal-despesa-titulo">➕ Nova Despesa</span>
         <button class="btn-close" onclick="fecharModal('modal-despesa')">✕</button>
       </div>
       <form id="form-despesa" onsubmit="salvarDespesa(event)">
+        <input type="hidden" id="d-id" />
         <div class="form-grid">
           <div class="form-group full">
             <label for="d-descricao">Descrição *</label>
@@ -661,10 +664,11 @@
   <div class="modal-overlay" id="modal-receita">
     <div class="modal">
       <div class="modal-header">
-        <span class="modal-title">➕ Nova Receita</span>
+        <span class="modal-title" id="modal-receita-titulo">➕ Nova Receita</span>
         <button class="btn-close" onclick="fecharModal('modal-receita')">✕</button>
       </div>
       <form id="form-receita" onsubmit="salvarReceita(event)">
+        <input type="hidden" id="r-id" />
         <div class="form-grid">
           <div class="form-group full">
             <label for="r-descricao">Descrição *</label>
@@ -704,7 +708,7 @@
         </div>
         <div class="form-actions">
           <button type="button" class="btn btn-ghost" onclick="fecharModal('modal-receita')">Cancelar</button>
-          <button type="submit" class="btn btn-success">💾 Salvar Receita</button>
+          <button type="submit" class="btn btn-success" id="btn-salvar-receita">💾 Salvar Receita</button>
         </div>
       </form>
     </div>
@@ -716,10 +720,11 @@
   <div class="modal-overlay" id="modal-conta">
     <div class="modal">
       <div class="modal-header">
-        <span class="modal-title">➕ Nova Conta</span>
+        <span class="modal-title" id="modal-conta-titulo">➕ Nova Conta</span>
         <button class="btn-close" onclick="fecharModal('modal-conta')">✕</button>
       </div>
       <form id="form-conta" onsubmit="salvarConta(event)">
+        <input type="hidden" id="c-id" />
         <div class="form-grid">
           <div class="form-group full">
             <label for="c-descricao">Descrição *</label>
@@ -755,7 +760,7 @@
         </div>
         <div class="form-actions">
           <button type="button" class="btn btn-ghost" onclick="fecharModal('modal-conta')">Cancelar</button>
-          <button type="submit" class="btn btn-primary">💾 Salvar Conta</button>
+          <button type="submit" class="btn btn-primary" id="btn-salvar-conta">💾 Salvar Conta</button>
         </div>
       </form>
     </div>
