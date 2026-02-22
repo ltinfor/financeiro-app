@@ -1,0 +1,5 @@
+{
+  "name": "React Starter Template",
+  "description": "A blank slate application configured with React, TypeScript, Tailwind CSS, and Framer Motion.",
+  "requestFramePermissions": []
+}

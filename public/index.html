@@ -49,6 +49,14 @@
             class="icon">👥</span>
           Clientes</button>
 
+        <div class="nav-group-label">Gestão</div>
+        <button class="nav-item" data-page="projetos" onclick="navegarPara('projetos', this)">
+          <span class="icon">📂</span> Projetos
+        </button>
+        <button class="nav-item" data-page="equipamentos" onclick="navegarPara('equipamentos', this)">
+          <span class="icon">🔧</span> Equipamentos
+        </button>
+
         <div class="nav-group-label">Financeiro</div>
         <button class="nav-item" data-page="contas" onclick="navegarPara('contas', this)">
           <span class="icon">🗂️</span> Contas a Pagar/Receber
@@ -498,6 +506,89 @@
         </div>
       </section>
 
+      <!-- ─────────────────────────────────────────
+         PÁGINA: PROJETOS
+     ───────────────────────────────────────── -->
+      <section class="page" id="page-projetos">
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Projetos</div>
+              <div class="card-sub">Gestão de projetos e status</div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center">
+              <button class="btn btn-primary" onclick="abrirModalProjeto()">+ Novo Projeto</button>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Nome</th>
+                  <th>Data Início</th>
+                  <th>Data Fim</th>
+                  <th>Status</th>
+                  <th>Orçamento</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tabela-projetos">
+                <tr>
+                  <td colspan="6" class="empty-state">
+                    <div class="icon">📂</div>
+                    <p>Nenhum projeto cadastrado</p>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─────────────────────────────────────────
+         PÁGINA: EQUIPAMENTOS
+     ───────────────────────────────────────── -->
+      <section class="page" id="page-equipamentos">
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Equipamentos</div>
+              <div class="card-sub">Controle de equipamentos da empresa ou projetos</div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center">
+              <button class="btn btn-primary" onclick="abrirModalEquipamento()">+ Novo Equipamento</button>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Modelo/Nome</th>
+                  <th>Nº Série</th>
+                  <th>Aquisição</th>
+                  <th>Valor</th>
+                  <th>Projeto</th>
+                  <th>Status</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tabela-equipamentos">
+                <tr>
+                  <td colspan="7" class="empty-state">
+                    <div class="icon">🔧</div>
+                    <p>Nenhum equipamento cadastrado</p>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
     </div><!-- /main -->
   </div><!-- /app-layout -->
 
@@ -800,6 +891,110 @@
         <div class="form-actions">
           <button type="button" class="btn btn-ghost" onclick="fecharModal('modal-cliente')">Cancelar</button>
           <button type="submit" class="btn btn-primary" id="btn-salvar-cliente">💾 Salvar Cliente</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+     MODAL: PROJETO
+══════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-projeto">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title" id="modal-projeto-titulo">➕ Novo Projeto</span>
+        <button class="btn-close" onclick="fecharModal('modal-projeto')">✕</button>
+      </div>
+      <form id="form-projeto" onsubmit="salvarProjeto(event)">
+        <input type="hidden" id="proj-id" />
+        <div class="form-grid">
+          <div class="form-group full">
+            <label for="proj-nome">Nome do Projeto *</label>
+            <input type="text" id="proj-nome" required />
+          </div>
+          <div class="form-group">
+            <label for="proj-inicio">Data de Início</label>
+            <input type="date" id="proj-inicio" />
+          </div>
+          <div class="form-group">
+            <label for="proj-fim">Data de Término</label>
+            <input type="date" id="proj-fim" />
+          </div>
+          <div class="form-group">
+            <label for="proj-status">Status</label>
+            <select id="proj-status">
+              <option value="ativo">Ativo</option>
+              <option value="concluido">Concluído</option>
+              <option value="cancelado">Cancelado</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="proj-orcamento">Orçamento (R$)</label>
+            <input type="number" id="proj-orcamento" step="0.01" min="0" />
+          </div>
+          <div class="form-group full">
+            <label for="proj-descricao">Descrição</label>
+            <textarea id="proj-descricao" rows="2"></textarea>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" onclick="fecharModal('modal-projeto')">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btn-salvar-projeto">💾 Salvar Projeto</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+     MODAL: EQUIPAMENTO
+══════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-equipamento">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title" id="modal-equipamento-titulo">➕ Novo Equipamento</span>
+        <button class="btn-close" onclick="fecharModal('modal-equipamento')">✕</button>
+      </div>
+      <form id="form-equipamento" onsubmit="salvarEquipamento(event)">
+        <input type="hidden" id="eqp-id" />
+        <div class="form-grid">
+          <div class="form-group full">
+            <label for="eqp-nome">Modelo / Nome *</label>
+            <input type="text" id="eqp-nome" required />
+          </div>
+          <div class="form-group">
+            <label for="eqp-serie">Número de Série</label>
+            <input type="text" id="eqp-serie" />
+          </div>
+          <div class="form-group">
+            <label for="eqp-aquisicao">Data de Aquisição</label>
+            <input type="date" id="eqp-aquisicao" />
+          </div>
+          <div class="form-group">
+            <label for="eqp-valor">Valor (R$)</label>
+            <input type="number" id="eqp-valor" step="0.01" min="0" />
+          </div>
+          <div class="form-group">
+            <label for="eqp-status">Status</label>
+            <select id="eqp-status">
+              <option value="ativo">Ativo</option>
+              <option value="manutencao">Em Manutenção</option>
+              <option value="inativo">Inativo</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="eqp-projeto">Alocado no Projeto (Opcional)</label>
+            <select id="eqp-projeto">
+              <option value="">Nenhum / Uso Interno</option>
+            </select>
+          </div>
+          <div class="form-group full">
+            <label for="eqp-descricao">Descrição</label>
+            <textarea id="eqp-descricao" rows="2"></textarea>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" onclick="fecharModal('modal-equipamento')">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btn-salvar-equipamento">💾 Salvar Equipamento</button>
         </div>
       </form>
     </div>

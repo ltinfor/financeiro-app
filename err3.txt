@@ -1,0 +1,6 @@
+
+> financeiro-app@1.0.0 start
+> node server.js
+
+❌ ERRO: Variáveis SUPABASE_URL e SUPABASE_ANON_KEY não encontradas.
+   Certifique-se de que o arquivo .env existe e está preenchido corretamente.

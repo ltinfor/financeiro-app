@@ -84,6 +84,8 @@ const titulos = {
     receitas: ['Receitas', 'Todas as entradas financeiras'],
     despesas: ['Despesas', 'Todas as saídas financeiras'],
     clientes: ['Clientes', 'Cadastro e histórico de clientes'],
+    projetos: ['Projetos', 'Gestão de projetos e status'],
+    equipamentos: ['Equipamentos', 'Controle de equipamentos da empresa ou projetos'],
     contas: ['Contas a Pagar/Receber', 'Controle de vencimentos'],
     fluxo: ['Fluxo de Caixa', 'Saldo acumulado por período'],
     dre: ['DRE Simplificado', 'Lucro/Prejuízo por categoria'],
@@ -120,6 +122,8 @@ function navegarPara(pagina, el) {
         receitas: carregarReceitas,
         despesas: carregarDespesas,
         clientes: carregarClientes,
+        projetos: carregarProjetos,
+        equipamentos: carregarEquipamentos,
         contas: carregarContas,
         fluxo: carregarFluxo,
         dre: carregarDRE
@@ -1164,6 +1168,229 @@ async function excluirCliente(id, nome) {
             carregarClientes();
         } else {
             toast(erro || 'Erro ao excluir cliente.', 'error');
+        }
+    } catch {
+        toast('Erro de conexão.', 'error');
+    }
+}
+
+/* ───────────────────────────────────────────────────────────
+   PÁGINA: PROJETOS
+─────────────────────────────────────────────────────────── */
+async function carregarProjetos() {
+    const tbody = document.getElementById('tabela-projetos');
+    tbody.innerHTML = `<tr><td colspan="6"><div class="skeleton"></div></td></tr>`;
+
+    const { dados } = await apiFetch(`/api/projetos`);
+
+    if (!dados || dados.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="icon">📂</div><p>Nenhum projeto cadastrado</p></div></td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = dados.map(p => `
+    <tr>
+      <td><strong>${p.nome}</strong></td>
+      <td>${fmtData(p.data_inicio)}</td>
+      <td>${fmtData(p.data_fim)}</td>
+      <td>${badge(p.status, p.status === 'ativo' ? 'recebido' : p.status === 'cancelado' ? 'cancelado' : 'pago')}</td>
+      <td style="color:var(--green);font-weight:600">${fmt(p.orcamento)}</td>
+      <td>
+        <button class="btn btn-ghost" style="padding:4px 8px;font-size:12px" onclick='editarProjeto(${JSON.stringify(p).replace(/'/g, "&#39;")})'>✏️</button>
+        <button class="btn btn-ghost" style="padding:4px 8px;font-size:12px;color:var(--red)" onclick="excluirProjeto('${p.id}', '${p.nome}')">🗑️</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function abrirModalProjeto() {
+    document.getElementById('form-projeto').reset();
+    document.getElementById('proj-id').value = '';
+    document.getElementById('modal-projeto-titulo').textContent = '➕ Novo Projeto';
+    document.getElementById('modal-projeto').classList.add('open');
+}
+
+function editarProjeto(p) {
+    document.getElementById('proj-id').value = p.id;
+    document.getElementById('proj-nome').value = p.nome || '';
+    document.getElementById('proj-inicio').value = p.data_inicio || '';
+    document.getElementById('proj-fim').value = p.data_fim || '';
+    document.getElementById('proj-status').value = p.status || 'ativo';
+    document.getElementById('proj-orcamento').value = p.orcamento || '';
+    document.getElementById('proj-descricao').value = p.descricao || '';
+    document.getElementById('modal-projeto-titulo').textContent = '✏️ Editar Projeto';
+    document.getElementById('modal-projeto').classList.add('open');
+}
+
+async function salvarProjeto(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btn-salvar-projeto');
+    btn.disabled = true;
+    btn.textContent = 'Salvando...';
+
+    const id = document.getElementById('proj-id').value;
+    const body = {
+        nome: document.getElementById('proj-nome').value.trim(),
+        data_inicio: document.getElementById('proj-inicio').value || null,
+        data_fim: document.getElementById('proj-fim').value || null,
+        status: document.getElementById('proj-status').value,
+        orcamento: document.getElementById('proj-orcamento').value || 0,
+        descricao: document.getElementById('proj-descricao').value.trim() || null
+    };
+
+    try {
+        const url = id ? `/api/projetos/${id}` : '/api/projetos';
+        const method = id ? 'PUT' : 'POST';
+
+        const { sucesso, erro } = await apiFetch(url, { method, body: JSON.stringify(body) });
+
+        if (sucesso) {
+            toast(id ? 'Projeto atualizado com sucesso!' : 'Projeto criado com sucesso!');
+            fecharModal('modal-projeto');
+            carregarProjetos();
+        } else {
+            toast(erro || 'Erro ao salvar projeto.', 'error');
+        }
+    } catch {
+        toast('Erro de conexão.', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = id ? '💾 Atualizar Projeto' : '💾 Salvar Projeto';
+    }
+}
+
+async function excluirProjeto(id, nome) {
+    if (!confirm(`Deseja excluir o projeto "${nome}"?\nEsta ação também pode desvincular equipamentos alocados a ele.`)) return;
+    try {
+        const { sucesso, erro } = await apiFetch(`/api/projetos/${id}`, { method: 'DELETE' });
+        if (sucesso) {
+            toast(`Projeto "${nome}" excluído!`);
+            carregarProjetos();
+        } else {
+            toast(erro || 'Erro ao excluir projeto.', 'error');
+        }
+    } catch {
+        toast('Erro de conexão.', 'error');
+    }
+}
+
+/* ───────────────────────────────────────────────────────────
+   PÁGINA: EQUIPAMENTOS
+─────────────────────────────────────────────────────────── */
+async function carregarEquipamentos() {
+    const tbody = document.getElementById('tabela-equipamentos');
+    tbody.innerHTML = `<tr><td colspan="7"><div class="skeleton"></div></td></tr>`;
+
+    const { dados } = await apiFetch(`/api/equipamentos`);
+
+    if (!dados || dados.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="icon">🔧</div><p>Nenhum equipamento cadastrado</p></div></td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = dados.map(eq => `
+    <tr>
+      <td><strong>${eq.nome}</strong></td>
+      <td>${eq.numero_serie || '—'}</td>
+      <td>${fmtData(eq.data_aquisicao)}</td>
+      <td style="color:var(--text);font-weight:600">${fmt(eq.valor)}</td>
+      <td><span class="badge" style="background:rgba(255,255,255,0.05);color:var(--text-muted)">${eq.projetos?.nome || 'Uso Interno'}</span></td>
+      <td>${badge(eq.status, eq.status === 'ativo' ? 'recebido' : eq.status === 'manutencao' ? 'atrasado' : 'cancelado')}</td>
+      <td>
+        <button class="btn btn-ghost" style="padding:4px 8px;font-size:12px" onclick='editarEquipamento(${JSON.stringify(eq).replace(/'/g, "&#39;")})'>✏️</button>
+        <button class="btn btn-ghost" style="padding:4px 8px;font-size:12px;color:var(--red)" onclick="excluirEquipamento('${eq.id}', '${eq.nome}')">🗑️</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function carregarListaProjetos() {
+    const select = document.getElementById('eqp-projeto');
+    select.innerHTML = '<option value="">Carregando...</option>';
+    try {
+        const { dados } = await apiFetch('/api/projetos');
+        select.innerHTML = '<option value="">Nenhum / Uso Interno</option>';
+        if (dados && dados.length > 0) {
+            dados.forEach(p => {
+                select.innerHTML += `<option value="${p.id}">${p.nome}</option>`;
+            });
+        }
+    } catch {
+        select.innerHTML = '<option value="">Erro ao carregar</option>';
+    }
+}
+
+async function abrirModalEquipamento() {
+    document.getElementById('form-equipamento').reset();
+    document.getElementById('eqp-id').value = '';
+    document.getElementById('modal-equipamento-titulo').textContent = '➕ Novo Equipamento';
+    await carregarListaProjetos();
+    document.getElementById('modal-equipamento').classList.add('open');
+}
+
+async function editarEquipamento(eq) {
+    document.getElementById('eqp-id').value = eq.id;
+    document.getElementById('eqp-nome').value = eq.nome || '';
+    document.getElementById('eqp-serie').value = eq.numero_serie || '';
+    document.getElementById('eqp-aquisicao').value = eq.data_aquisicao || '';
+    document.getElementById('eqp-valor').value = eq.valor || '';
+    document.getElementById('eqp-status').value = eq.status || 'ativo';
+    document.getElementById('eqp-descricao').value = eq.descricao || '';
+
+    await carregarListaProjetos();
+    document.getElementById('eqp-projeto').value = eq.projeto_id || '';
+
+    document.getElementById('modal-equipamento-titulo').textContent = '✏️ Editar Equipamento';
+    document.getElementById('modal-equipamento').classList.add('open');
+}
+
+async function salvarEquipamento(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btn-salvar-equipamento');
+    btn.disabled = true;
+    btn.textContent = 'Salvando...';
+
+    const id = document.getElementById('eqp-id').value;
+    const body = {
+        nome: document.getElementById('eqp-nome').value.trim(),
+        numero_serie: document.getElementById('eqp-serie').value.trim() || null,
+        data_aquisicao: document.getElementById('eqp-aquisicao').value || null,
+        valor: document.getElementById('eqp-valor').value || 0,
+        status: document.getElementById('eqp-status').value,
+        projeto_id: document.getElementById('eqp-projeto').value || null,
+        descricao: document.getElementById('eqp-descricao').value.trim() || null
+    };
+
+    try {
+        const url = id ? `/api/equipamentos/${id}` : '/api/equipamentos';
+        const method = id ? 'PUT' : 'POST';
+
+        const { sucesso, erro } = await apiFetch(url, { method, body: JSON.stringify(body) });
+
+        if (sucesso) {
+            toast(id ? 'Equipamento atualizado com sucesso!' : 'Equipamento cadastrado com sucesso!');
+            fecharModal('modal-equipamento');
+            carregarEquipamentos();
+        } else {
+            toast(erro || 'Erro ao salvar equipamento.', 'error');
+        }
+    } catch {
+        toast('Erro de conexão.', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = id ? '💾 Atualizar Equipamento' : '💾 Salvar Equipamento';
+    }
+}
+
+async function excluirEquipamento(id, nome) {
+    if (!confirm(`Deseja excluir o equipamento "${nome}"?\nEsta ação não pode ser desfeita.`)) return;
+    try {
+        const { sucesso, erro } = await apiFetch(`/api/equipamentos/${id}`, { method: 'DELETE' });
+        if (sucesso) {
+            toast(`Equipamento "${nome}" excluído!`);
+            carregarEquipamentos();
+        } else {
+            toast(erro || 'Erro ao excluir equipamento.', 'error');
         }
     } catch {
         toast('Erro de conexão.', 'error');
