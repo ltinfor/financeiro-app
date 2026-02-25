@@ -10,7 +10,7 @@ const router = express.Router();
 // Query params: tipo_conta (pagar|receber), tipo (pessoal|empresarial), status, vencendo_em_dias
 router.get('/', async (req, res) => {
     try {
-        const { tipo_conta, tipo, status, vencendo_em_dias } = req.query;
+        const { tipo_conta, tipo, status, vencendo_em_dias, mes } = req.query;
 
         let query = supabase
             .from('contas_pagar_receber')
@@ -23,6 +23,15 @@ router.get('/', async (req, res) => {
         if (tipo_conta) query = query.eq('tipo_conta', tipo_conta);
         if (tipo) query = query.eq('tipo', tipo);
         if (status) query = query.eq('status', status);
+
+        if (mes) {
+            const ano = mes.split('-')[0];
+            const m = mes.split('-')[1];
+            const ultimoDia = new Date(ano, m, 0).getDate();
+            query = query
+                .gte('vencimento', `${mes}-01`)
+                .lte('vencimento', `${mes}-${ultimoDia}`);
+        }
 
         // Filtro: contas vencendo nos próximos N dias
         if (vencendo_em_dias) {
@@ -46,9 +55,25 @@ router.get('/', async (req, res) => {
 // GET /api/contas/resumo — Resumo rápido por status
 router.get('/resumo', async (req, res) => {
     try {
-        const { data, error } = await supabase
+        const { mes } = req.query;
+        let query = supabase
             .from('contas_pagar_receber')
-            .select('tipo_conta, status, valor');
+            .select('tipo_conta, status, valor, vencimento');
+
+        if (mes) {
+            const ano = mes.split('-')[0];
+            const m = mes.split('-')[1];
+            const ultimoDia = new Date(ano, m, 0).getDate();
+            const gteDate = `${mes}-01`;
+            const lteDate = `${mes}-${ultimoDia}`;
+            console.log(`[DEBUG] Contas/Resumo - Filtro de mês: ${mes} | GTE: ${gteDate} | LTE: ${lteDate}`);
+            query = query
+                .gte('vencimento', gteDate)
+                .lte('vencimento', lteDate);
+        }
+
+        const { data, error } = await query;
+        console.log(`[DEBUG] Contas/Resumo - Dados encontrados: ${data ? data.length : 0}`);
 
         if (error) throw error;
 

@@ -336,6 +336,9 @@
           <div class="card-header" style="flex-wrap:wrap; gap:10px">
             <div class="card-title">Contas a Pagar / Receber</div>
             <div style="display:flex; gap:10px; align-items:center;">
+              <input type="month" id="filtro-mes-contas"
+                style="padding:6px 10px; font-size:12px; border-radius:6px; background:var(--bg-primary); color:var(--text); border:1px solid var(--border)"
+                onchange="carregarContas()" title="Mês de Referência" />
               <button class="btn btn-success" id="btn-pagar-lote" style="display:none;" onclick="marcarSelecionadas()">✔
                 Pagar Marcadas</button>
               <button class="btn btn-primary" onclick="abrirModalConta()">+ Nova Conta</button>
@@ -1024,7 +1027,7 @@
   <!-- Toast container -->
   <div class="toast-container" id="toast-container"></div>
 
-  <script src="dashboard.js"></script>
+  <script src="dashboard.js?v=2"></script>
 </body>
 
 </html>

@@ -556,17 +556,25 @@ async function verificarAlertasContas() {
    PÁGINA: CONTAS
 ═══════════════════════════════════════════════════════════ */
 async function carregarContas() {
-    const tipoParam = state.tipo !== 'todos' ? `?tipo=${state.tipo}` : '';
+    let tipoParam = state.tipo !== 'todos' ? `?tipo=${state.tipo}` : '?';
+
+    const inputMes = document.getElementById('filtro-mes-contas');
+    if (inputMes && !inputMes.value) {
+        inputMes.value = new Date().toISOString().substring(0, 7); // Mês atual
+    }
+    const mesAtual = inputMes ? inputMes.value : new Date().toISOString().substring(0, 7);
+
+    tipoParam += `&mes=${mesAtual}`;
 
     const [{ dados }, { dados: resumo }] = await Promise.all([
-        apiFetch(`/api/contas${tipoParam}`),
-        apiFetch('/api/contas/resumo')
+        apiFetch(`/api/contas${tipoParam.replace('?&', '?')}`),
+        apiFetch(`/api/contas/resumo?mes=${mesAtual}`)
     ]);
 
     // KPIs
     if (resumo) {
-        const pagar = parseFloat(resumo.a_pagar.pendente || 0) + parseFloat(resumo.a_pagar.atrasado || 0);
-        const receber = parseFloat(resumo.a_receber.pendente || 0);
+        const pagar = parseFloat(resumo.a_pagar.total || 0);
+        const receber = parseFloat(resumo.a_receber.total || 0);
         document.getElementById('kpi-a-pagar').textContent = fmt(pagar);
         document.getElementById('kpi-a-receber').textContent = fmt(receber);
         document.getElementById('kpi-atrasadas').textContent =
