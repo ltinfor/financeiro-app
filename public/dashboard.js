@@ -620,6 +620,10 @@ async function carregarContas() {
         const venceAmanha = c.status === 'pendente' && dtVenc.getTime() === amanha.getTime();
         const statusReal = atrasado ? 'atrasado' : c.status;
 
+        const mesesNomes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+        const dtUtc = new Date(c.vencimento + 'T12:00:00');
+        const mesAnoRef = `${mesesNomes[dtUtc.getMonth()]}/${dtUtc.getFullYear()}`;
+
         let alertaIcon = '';
         if (venceHoje) alertaIcon = ' <span title="Vence hoje!" style="color:var(--red)">⚠️</span>';
         if (venceAmanha) alertaIcon = ' <span title="Vence amanhã" style="color:#f59e0b">🔔</span>';
@@ -630,6 +634,7 @@ async function carregarContas() {
       <td>
         ${c.status === 'pendente' ? `<input type="checkbox" class="chk-conta" value="${c.id}" onchange="verificarCheckboxContas()" />` : ''}
       </td>
+      <td style="color:var(--text-muted);font-weight:600;font-size:13px">${mesAnoRef}</td>
       <td style="${atrasado || venceHoje ? 'color:var(--red)' : venceAmanha ? 'color:#f59e0b' : ''}">
         ${fmtData(c.vencimento)}${alertaIcon}
       </td>
@@ -638,11 +643,29 @@ async function carregarContas() {
       <td style="font-weight:600">${fmt(c.valor)}</td>
       <td>${statusBadge(statusReal)}</td>
       <td>
-        ${c.status === 'pendente' ? `<button class="btn btn-success" style="padding:4px 8px;font-size:12px;margin-bottom:4px" onclick="marcarPago(${c.id})">✔ Pago</button><br>` : ''}
-        <button class="btn btn-ghost" style="padding:4px 10px;font-size:12px" onclick='editarConta(${JSON.stringify(c).replace(/'/g, "&#39;")})'>✏️ Editar</button>
+        ${c.status === 'pendente' ? `<button class="btn btn-success" style="padding:4px 8px;font-size:12px;margin-bottom:4px;display:inline-block;width:100%" onclick="marcarPago(${c.id})">✔ Pago</button><br>` : ''}
+        <button class="btn btn-ghost" style="padding:4px 10px;font-size:12px;display:inline-block;width:100%;margin-bottom:4px" onclick='editarConta(${JSON.stringify(c).replace(/'/g, "&#39;")})'>✏️ Editar</button><br>
+        <button class="btn btn-danger" style="padding:4px 10px;font-size:12px;display:inline-block;width:100%" onclick="excluirConta(${c.id}, '${c.descricao.replace(/'/g, "\\'")}')">🗑️ Excluir</button>
       </td>
     </tr>`;
     }).join('');
+}
+
+async function excluirConta(id, desc) {
+    if (!confirm(`Tem certeza que deseja excluir a conta "${desc}"?`)) return;
+
+    try {
+        const { sucesso } = await apiFetch(`/api/contas/${id}`, { method: 'DELETE' });
+        if (sucesso) {
+            toast('Conta excluída com sucesso!');
+            carregarContas();
+            iniciarDashboard();
+        } else {
+            toast('Erro ao excluir conta.', 'error');
+        }
+    } catch {
+        toast('Erro de conexão.', 'error');
+    }
 }
 
 async function marcarPago(id) {
@@ -915,6 +938,13 @@ function abrirModalConta() {
     document.getElementById('modal-conta-titulo').textContent = '➕ Nova Conta';
     document.getElementById('btn-salvar-conta').textContent = '💾 Salvar Conta';
     document.getElementById('c-vencimento').value = new Date().toISOString().split('T')[0];
+    const chkRecorrente = document.getElementById('c-recorrente');
+    if (chkRecorrente) {
+        chkRecorrente.checked = false;
+        chkRecorrente.parentElement.parentElement.parentElement.style.display = 'block';
+        document.getElementById('c-meses').disabled = true;
+        document.getElementById('c-meses').value = 12;
+    }
     document.getElementById('modal-conta').classList.add('open');
 }
 
@@ -926,6 +956,18 @@ function editarConta(c) {
     document.getElementById('c-tipo-conta').value = c.tipo_conta || 'pagar';
     document.getElementById('c-tipo').value = c.tipo || 'pessoal';
     document.getElementById('c-obs').value = c.observacoes || '';
+
+    const chkRecorrente = document.getElementById('c-recorrente');
+    if (chkRecorrente) {
+        if (c.parcelas_total > 1) {
+            chkRecorrente.parentElement.parentElement.parentElement.style.display = 'none';
+        } else {
+            chkRecorrente.checked = false;
+            chkRecorrente.parentElement.parentElement.parentElement.style.display = 'block';
+            document.getElementById('c-meses').disabled = true;
+            document.getElementById('c-meses').value = 12;
+        }
+    }
 
     document.getElementById('modal-conta-titulo').textContent = '✏️ Editar Conta';
     document.getElementById('btn-salvar-conta').textContent = '💾 Atualizar Conta';
@@ -1052,7 +1094,9 @@ async function salvarConta(e) {
             vencimento: document.getElementById('c-vencimento').value,
             tipo_conta: document.getElementById('c-tipo-conta').value,
             tipo: document.getElementById('c-tipo').value,
-            observacoes: document.getElementById('c-obs').value
+            observacoes: document.getElementById('c-obs').value,
+            recorrente: document.getElementById('c-recorrente') ? document.getElementById('c-recorrente').checked : false,
+            parcelas_total: document.getElementById('c-meses') ? document.getElementById('c-meses').value : 12
         };
 
         const url = id ? `/api/contas/${id}` : '/api/contas';

@@ -1,0 +1,10 @@
+[2026-02-25T00:37:16.588Z] LOG_TRILHA_AUDITORIA: User: Anônimo | Método: PUT | Rota: /api/despesas/1 | IP: ::1
+[2026-02-25T00:43:49.054Z] LOG_TRILHA_AUDITORIA: User: Anônimo | Método: PUT | Rota: /api/contas/6 | IP: ::1
+[2026-02-25T00:43:59.403Z] LOG_TRILHA_AUDITORIA: User: Anônimo | Método: PUT | Rota: /api/contas/6 | IP: ::1
+[2026-02-25T00:49:56.611Z] LOG_TRILHA_AUDITORIA: User: Anônimo | Método: PUT | Rota: /api/contas/9 | IP: ::1
+[2026-02-25T00:50:05.523Z] LOG_TRILHA_AUDITORIA: User: Anônimo | Método: PUT | Rota: /api/contas/9 | IP: ::1
+[2026-02-25T00:53:33.812Z] LOG_TRILHA_AUDITORIA: User: Anônimo | Método: PUT | Rota: /api/contas/9 | IP: ::1
+[2026-02-25T00:53:47.355Z] LOG_TRILHA_AUDITORIA: User: Anônimo | Método: PUT | Rota: /api/contas/9 | IP: ::1
+[2026-02-25T00:56:31.341Z] LOG_TRILHA_AUDITORIA: User: Anônimo | Método: PUT | Rota: /api/contas/9 | IP: ::1
+[2026-02-25T00:57:48.284Z] LOG_TRILHA_AUDITORIA: User: Anônimo | Método: PUT | Rota: /api/contas/4 | IP: ::1
+[2026-02-25T00:58:37.324Z] LOG_TRILHA_AUDITORIA: User: Anônimo | Método: PUT | Rota: /api/contas/5 | IP: ::1
