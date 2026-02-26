@@ -7,10 +7,10 @@ import supabase from '../config/supabase.js';
 const router = express.Router();
 
 // GET /api/contas — Lista contas com filtros
-// Query params: tipo_conta (pagar|receber), tipo (pessoal|empresarial), status, vencendo_em_dias
+// Query params: tipo_conta (pagar|receber), tipo (pessoal|empresarial), status, vencendo_em_dias, inicio, fim
 router.get('/', async (req, res) => {
     try {
-        const { tipo_conta, tipo, status, vencendo_em_dias } = req.query;
+        const { tipo_conta, tipo, status, vencendo_em_dias, inicio, fim } = req.query;
 
         let query = supabase
             .from('contas_pagar_receber')
@@ -23,6 +23,11 @@ router.get('/', async (req, res) => {
         if (tipo_conta) query = query.eq('tipo_conta', tipo_conta);
         if (tipo) query = query.eq('tipo', tipo);
         if (status) query = query.eq('status', status);
+
+        // Filtro por data
+        if (inicio && fim) {
+            query = query.gte('vencimento', inicio).lte('vencimento', fim);
+        }
 
         // Filtro: contas vencendo nos próximos N dias
         if (vencendo_em_dias) {
@@ -46,9 +51,18 @@ router.get('/', async (req, res) => {
 // GET /api/contas/resumo — Resumo rápido por status
 router.get('/resumo', async (req, res) => {
     try {
-        const { data, error } = await supabase
+        const { tipo, inicio, fim } = req.query;
+
+        let query = supabase
             .from('contas_pagar_receber')
             .select('tipo_conta, status, valor');
+
+        if (tipo) query = query.eq('tipo', tipo);
+        if (inicio && fim) {
+            query = query.gte('vencimento', inicio).lte('vencimento', fim);
+        }
+
+        const { data, error } = await query;
 
         if (error) throw error;
 

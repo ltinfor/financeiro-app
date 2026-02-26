@@ -35,7 +35,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Preencher datas padrão nos formulários
     const hoje = agora.toISOString().split('T')[0];
-    document.querySelectorAll('input[type="date"]').forEach(el => el.value = hoje);
+    const primeiroDia = new Date(agora.getFullYear(), agora.getMonth(), 1).toISOString().split('T')[0];
+    const ultimoDia = new Date(agora.getFullYear(), agora.getMonth() + 1, 0).toISOString().split('T')[0];
+
+    document.querySelectorAll('input[type="date"]').forEach(el => {
+        if (el.id.endsWith('-inicio')) {
+            el.value = primeiroDia;
+        } else if (el.id.endsWith('-fim')) {
+            el.value = ultimoDia;
+        } else {
+            el.value = hoje;
+        }
+    });
 
     // Carregar nome do usuário logado no header
     fetch('/auth/me', { credentials: 'include' })
@@ -546,11 +557,16 @@ async function verificarAlertasContas() {
    PÁGINA: CONTAS
 ═══════════════════════════════════════════════════════════ */
 async function carregarContas() {
-    const tipoParam = state.tipo !== 'todos' ? `?tipo=${state.tipo}` : '';
+    let tipoParam = state.tipo !== 'todos' ? `?tipo=${state.tipo}` : '?';
+    const dtInicio = document.getElementById('filtro-c-inicio')?.value;
+    const dtFim = document.getElementById('filtro-c-fim')?.value;
+
+    if (dtInicio && dtFim) tipoParam += `&inicio=${dtInicio}&fim=${dtFim}`;
+    tipoParam = tipoParam.replace('?&', '?');
 
     const [{ dados }, { dados: resumo }] = await Promise.all([
         apiFetch(`/api/contas${tipoParam}`),
-        apiFetch('/api/contas/resumo')
+        apiFetch(`/api/contas/resumo${tipoParam}`)
     ]);
 
     // KPIs
