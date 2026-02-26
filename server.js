@@ -31,8 +31,6 @@ import rotasDespesas from './routes/despesas.js';
 import rotasClientes from './routes/clientes.js';
 import rotasContas from './routes/contas.js';
 import rotasRelatorios from './routes/relatorios.js';
-import rotasProjetos from './routes/projetos.js';
-import rotasEquipamentos from './routes/equipamentos.js';
 import { autenticarAPI, autenticarPagina } from './middleware/autenticar.js';
 import { auditarAcao } from './middleware/logger.js';
 import supabase from './config/supabase.js';
@@ -99,8 +97,6 @@ app.use('/api/despesas', autenticarAPI, rotasDespesas);
 app.use('/api/contas', autenticarAPI, rotasContas);
 app.use('/api/clientes', autenticarAPI, rotasClientes); // Proteção Aplicada
 app.use('/api/relatorios', autenticarAPI, rotasRelatorios);
-app.use('/api/projetos', autenticarAPI, rotasProjetos);
-app.use('/api/equipamentos', autenticarAPI, rotasEquipamentos);
 
 app.get('/api/categorias', autenticarAPI, async (req, res) => {
     try {

@@ -612,7 +612,6 @@ tbody tr:hover td {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  min-width: 0;
 }
 
 .form-group.full {
@@ -636,7 +635,6 @@ textarea {
   font-size: 14px;
   transition: border-color 0.2s;
   outline: none;
-  width: 100%;
 }
 
 input:focus,
@@ -667,7 +665,6 @@ select option {
   font-size: 14px;
   font-weight: 600;
   transition: all 0.18s;
-  white-space: nowrap;
 }
 
 .btn-primary {

@@ -124,14 +124,10 @@ router.post('/', upload.single('recibo'), async (req, res) => {
 });
 
 // PUT /api/despesas/:id — Atualiza uma despesa
-router.put('/:id', upload.single('recibo'), async (req, res) => {
+router.put('/:id', async (req, res) => {
     try {
         const atualizacoes = req.body;
         if (atualizacoes.valor) atualizacoes.valor = parseFloat(atualizacoes.valor);
-
-        if (req.file) {
-            atualizacoes.recibo_url = `/uploads/${req.file.filename}`;
-        }
 
         const { data, error } = await supabase
             .from('despesas')
