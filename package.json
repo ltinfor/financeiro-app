@@ -2,14 +2,15 @@
     "name": "financeiro-app",
     "version": "1.0.0",
     "description": "Aplicativo Financeiro com Node.js, Express e Supabase",
-    "main": "server.js",
     "type": "module",
+    "main": "server.js",
     "scripts": {
         "start": "node server.js",
         "dev": "nodemon server.js"
     },
     "dependencies": {
         "@supabase/supabase-js": "^2.47.0",
+        "archiver": "^7.0.1",
         "bcryptjs": "^3.0.3",
         "cookie-parser": "^1.4.7",
         "cors": "^2.8.5",

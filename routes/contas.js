@@ -10,7 +10,7 @@ const router = express.Router();
 // Query params: tipo_conta (pagar|receber), tipo (pessoal|empresarial), status, vencendo_em_dias
 router.get('/', async (req, res) => {
     try {
-        const { tipo_conta, tipo, status, vencendo_em_dias, mes } = req.query;
+        const { tipo_conta, tipo, status, vencendo_em_dias } = req.query;
 
         let query = supabase
             .from('contas_pagar_receber')
@@ -23,15 +23,6 @@ router.get('/', async (req, res) => {
         if (tipo_conta) query = query.eq('tipo_conta', tipo_conta);
         if (tipo) query = query.eq('tipo', tipo);
         if (status) query = query.eq('status', status);
-
-        if (mes) {
-            const ano = mes.split('-')[0];
-            const m = mes.split('-')[1];
-            const ultimoDia = new Date(ano, m, 0).getDate();
-            query = query
-                .gte('vencimento', `${mes}-01`)
-                .lte('vencimento', `${mes}-${ultimoDia}`);
-        }
 
         // Filtro: contas vencendo nos próximos N dias
         if (vencendo_em_dias) {
@@ -55,25 +46,9 @@ router.get('/', async (req, res) => {
 // GET /api/contas/resumo — Resumo rápido por status
 router.get('/resumo', async (req, res) => {
     try {
-        const { mes } = req.query;
-        let query = supabase
+        const { data, error } = await supabase
             .from('contas_pagar_receber')
-            .select('tipo_conta, status, valor, vencimento');
-
-        if (mes) {
-            const ano = mes.split('-')[0];
-            const m = mes.split('-')[1];
-            const ultimoDia = new Date(ano, m, 0).getDate();
-            const gteDate = `${mes}-01`;
-            const lteDate = `${mes}-${ultimoDia}`;
-            console.log(`[DEBUG] Contas/Resumo - Filtro de mês: ${mes} | GTE: ${gteDate} | LTE: ${lteDate}`);
-            query = query
-                .gte('vencimento', gteDate)
-                .lte('vencimento', lteDate);
-        }
-
-        const { data, error } = await query;
-        console.log(`[DEBUG] Contas/Resumo - Dados encontrados: ${data ? data.length : 0}`);
+            .select('tipo_conta, status, valor');
 
         if (error) throw error;
 
@@ -127,37 +102,22 @@ router.post('/', async (req, res) => {
             });
         }
 
-        const isRecorrente = req.body.recorrente === true || req.body.recorrente === 'true';
-        const repeticoes = isRecorrente ? (req.body.parcelas_total ? parseInt(req.body.parcelas_total) : 12) : 1;
-        const registros = [];
-
-        for (let i = 0; i < repeticoes; i++) {
-            let dataVenc = new Date(vencimento + 'T12:00:00'); // T12 para evitar conflito de fuso horário
-            dataVenc.setMonth(dataVenc.getMonth() + i);
-            let novoVenc = dataVenc.toISOString().split('T')[0];
-
-            let novaDescricao = descricao;
-            if (isRecorrente) novaDescricao += ` (${i + 1}/${repeticoes})`;
-
-            registros.push({
-                descricao: novaDescricao,
+        const { data, error } = await supabase
+            .from('contas_pagar_receber')
+            .insert([{
+                descricao,
                 valor: parseFloat(valor),
                 tipo_conta,
                 tipo,
                 categoria_id: categoria_id ? parseInt(categoria_id) : null,
-                vencimento: novoVenc,
+                vencimento,
                 status: status || 'pendente',
                 recibo_url: recibo_url || null,
-                parcelas_total: isRecorrente ? repeticoes : (parcelas_total ? parseInt(parcelas_total) : 1),
-                parcela_atual: isRecorrente ? i + 1 : 1,
+                parcelas_total: parcelas_total || 1,
                 observacoes: observacoes || null
-            });
-        }
-
-        const { data, error } = await supabase
-            .from('contas_pagar_receber')
-            .insert(registros)
-            .select('*');
+            }])
+            .select('*')
+            .single();
 
         if (error) throw error;
 
@@ -170,31 +130,19 @@ router.post('/', async (req, res) => {
 // PUT /api/contas/:id — Atualiza uma conta (ex: marcar como pago)
 router.put('/:id', async (req, res) => {
     try {
-        // Usa desconstrução segura para não referenciar o req.body original e apagar campos extras
-        const isRecorrente = req.body.recorrente === true || req.body.recorrente === 'true';
-        let mesesRecorrencia = 12;
-        if (isRecorrente) {
-            mesesRecorrencia = req.body.parcelas_total ? parseInt(req.body.parcelas_total) : 12;
-        }
-
-        const atualizacoes = { ...req.body };
-        delete atualizacoes.recorrente;
-
+        const atualizacoes = req.body;
         if (atualizacoes.valor) atualizacoes.valor = parseFloat(atualizacoes.valor);
 
         // Se marcando como pago, registra a data de pagamento
-        if (atualizacoes.status === 'pago' && !atualizacoes.data_pagamento) {
-            atualizacoes.data_pagamento = new Date().toISOString().split('T')[0];
+        let marcandoComoPago = false;
+        if (atualizacoes.status === 'pago') {
+            marcandoComoPago = true;
+            if (!atualizacoes.data_pagamento) {
+                atualizacoes.data_pagamento = new Date().toISOString().split('T')[0];
+            }
         }
 
-        // Se for promovida a recorrente
-        if (isRecorrente) {
-            atualizacoes.descricao = atualizacoes.descricao ? (atualizacoes.descricao + ` (1/${mesesRecorrencia})`) : `Conta recorrente (1/${mesesRecorrencia})`;
-            atualizacoes.parcelas_total = mesesRecorrencia;
-            atualizacoes.parcela_atual = 1;
-        }
-
-        const { data, error } = await supabase
+        const { data: contaAtualizada, error } = await supabase
             .from('contas_pagar_receber')
             .update(atualizacoes)
             .eq('id', req.params.id)
@@ -203,33 +151,33 @@ router.put('/:id', async (req, res) => {
 
         if (error) throw error;
 
-        // Gerar contas adicionais se foi marcado como recorrente
-        if (isRecorrente && data) {
-            const registrosExtras = [];
-            for (let i = 1; i < mesesRecorrencia; i++) {
-                let dataVenc = new Date(data.vencimento + 'T12:00:00');
-                dataVenc.setMonth(dataVenc.getMonth() + i);
-                let novoVenc = dataVenc.toISOString().split('T')[0];
-
-                registrosExtras.push({
-                    descricao: data.descricao.replace(`(1/${mesesRecorrencia})`, `(${i + 1}/${mesesRecorrencia})`),
-                    valor: data.valor,
-                    tipo_conta: data.tipo_conta,
-                    tipo: data.tipo,
-                    categoria_id: data.categoria_id || null,
-                    vencimento: novoVenc,
-                    status: 'pendente',
-                    parcelas_total: 12,
-                    parcela_atual: i + 1,
-                    observacoes: data.observacoes || null
-                });
-            }
-            if (registrosExtras.length > 0) {
-                await supabase.from('contas_pagar_receber').insert(registrosExtras);
+        // --- INTEGRAÇÃO COM RECEITAS E DESPESAS ---
+        // Quando a conta for baixada (marcada como paga no atualizar), gerar no fluxo principal de Receitas ou Despesas.
+        if (marcandoComoPago && contaAtualizada) {
+            if (contaAtualizada.tipo_conta === 'pagar') {
+                await supabase.from('despesas').insert([{
+                    descricao: `Ref. Conta a Pagar: ${contaAtualizada.descricao}`,
+                    valor: contaAtualizada.valor,
+                    data: contaAtualizada.data_pagamento || new Date().toISOString().split('T')[0],
+                    categoria_id: contaAtualizada.categoria_id,
+                    tipo: contaAtualizada.tipo,
+                    status: 'pago',
+                    observacoes: contaAtualizada.observacoes || 'Gerado automaticamente ao baixar conta a pagar.'
+                }]);
+            } else if (contaAtualizada.tipo_conta === 'receber') {
+                await supabase.from('receitas').insert([{
+                    descricao: `Ref. Conta a Receber: ${contaAtualizada.descricao}`,
+                    valor: contaAtualizada.valor,
+                    data: contaAtualizada.data_pagamento || new Date().toISOString().split('T')[0],
+                    categoria_id: contaAtualizada.categoria_id,
+                    tipo: contaAtualizada.tipo,
+                    status: 'recebido',
+                    observacoes: contaAtualizada.observacoes || 'Gerado automaticamente ao baixar conta a receber.'
+                }]);
             }
         }
 
-        res.json({ sucesso: true, dados: data });
+        res.json({ sucesso: true, dados: contaAtualizada });
     } catch (err) {
         res.status(500).json({ sucesso: false, erro: err.message });
     }

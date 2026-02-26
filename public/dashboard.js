@@ -84,8 +84,6 @@ const titulos = {
     receitas: ['Receitas', 'Todas as entradas financeiras'],
     despesas: ['Despesas', 'Todas as saídas financeiras'],
     clientes: ['Clientes', 'Cadastro e histórico de clientes'],
-    projetos: ['Projetos', 'Gestão de projetos e status'],
-    equipamentos: ['Equipamentos', 'Controle de equipamentos da empresa ou projetos'],
     contas: ['Contas a Pagar/Receber', 'Controle de vencimentos'],
     fluxo: ['Fluxo de Caixa', 'Saldo acumulado por período'],
     dre: ['DRE Simplificado', 'Lucro/Prejuízo por categoria'],
@@ -122,8 +120,6 @@ function navegarPara(pagina, el) {
         receitas: carregarReceitas,
         despesas: carregarDespesas,
         clientes: carregarClientes,
-        projetos: carregarProjetos,
-        equipamentos: carregarEquipamentos,
         contas: carregarContas,
         fluxo: carregarFluxo,
         dre: carregarDRE
@@ -449,7 +445,7 @@ async function carregarUltimasTransacoes() {
 ═══════════════════════════════════════════════════════════ */
 async function carregarReceitas() {
     const tbody = document.getElementById('tabela-receitas');
-    tbody.innerHTML = `<tr><td colspan="7"><div class="skeleton"></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6"><div class="skeleton"></div></td></tr>`;
 
     let tipoParam = state.tipo !== 'todos' ? `?tipo=${state.tipo}` : '?';
     const dtInicio = document.getElementById('filtro-r-inicio').value;
@@ -461,7 +457,7 @@ async function carregarReceitas() {
     const { dados } = await apiFetch(`/api/receitas${tipoParam.replace('?&', '?')}`);
 
     if (!dados || dados.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="icon">📈</div><p>Nenhuma receita cadastrada</p></div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="icon">📈</div><p>Nenhuma receita cadastrada</p></div></td></tr>`;
         return;
     }
 
@@ -473,9 +469,6 @@ async function carregarReceitas() {
       <td>${tipoBadge(r.tipo)}</td>
       <td style="color:var(--green);font-weight:600">${fmt(r.valor)}</td>
       <td>${statusBadge(r.status)}</td>
-      <td>
-        <button class="btn btn-ghost" style="padding:4px 10px;font-size:12px" onclick='editarReceita(${JSON.stringify(r).replace(/'/g, "&#39;")})'>✏️ Editar</button>
-      </td>
     </tr>
   `).join('');
 }
@@ -485,7 +478,7 @@ async function carregarReceitas() {
 ═══════════════════════════════════════════════════════════ */
 async function carregarDespesas() {
     const tbody = document.getElementById('tabela-despesas');
-    tbody.innerHTML = `<tr><td colspan="8"><div class="skeleton"></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7"><div class="skeleton"></div></td></tr>`;
 
     let tipoParam = state.tipo !== 'todos' ? `?tipo=${state.tipo}` : '?';
     const dtInicio = document.getElementById('filtro-d-inicio').value;
@@ -496,7 +489,7 @@ async function carregarDespesas() {
     const { dados } = await apiFetch(`/api/despesas${tipoParam.replace('?&', '?')}`);
 
     if (!dados || dados.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="icon">📉</div><p>Nenhuma despesa cadastrada</p></div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="icon">📉</div><p>Nenhuma despesa cadastrada</p></div></td></tr>`;
         return;
     }
 
@@ -509,9 +502,6 @@ async function carregarDespesas() {
       <td style="color:var(--red);font-weight:600">${fmt(d.valor)}</td>
       <td>${statusBadge(d.status)}</td>
       <td>${d.recibo_url ? `<a href="${d.recibo_url}" target="_blank" style="color:var(--blue)">📎 Ver</a>` : '—'}</td>
-      <td>
-        <button class="btn btn-ghost" style="padding:4px 10px;font-size:12px" onclick='editarDespesa(${JSON.stringify(d).replace(/'/g, "&#39;")})'>✏️ Editar</button>
-      </td>
     </tr>
   `).join('');
 }
@@ -556,25 +546,17 @@ async function verificarAlertasContas() {
    PÁGINA: CONTAS
 ═══════════════════════════════════════════════════════════ */
 async function carregarContas() {
-    let tipoParam = state.tipo !== 'todos' ? `?tipo=${state.tipo}` : '?';
-
-    const inputMes = document.getElementById('filtro-mes-contas');
-    if (inputMes && !inputMes.value) {
-        inputMes.value = new Date().toISOString().substring(0, 7); // Mês atual
-    }
-    const mesAtual = inputMes ? inputMes.value : new Date().toISOString().substring(0, 7);
-
-    tipoParam += `&mes=${mesAtual}`;
+    const tipoParam = state.tipo !== 'todos' ? `?tipo=${state.tipo}` : '';
 
     const [{ dados }, { dados: resumo }] = await Promise.all([
-        apiFetch(`/api/contas${tipoParam.replace('?&', '?')}`),
-        apiFetch(`/api/contas/resumo?mes=${mesAtual}`)
+        apiFetch(`/api/contas${tipoParam}`),
+        apiFetch('/api/contas/resumo')
     ]);
 
     // KPIs
     if (resumo) {
-        const pagar = parseFloat(resumo.a_pagar.total || 0);
-        const receber = parseFloat(resumo.a_receber.total || 0);
+        const pagar = parseFloat(resumo.a_pagar.pendente || 0) + parseFloat(resumo.a_pagar.atrasado || 0);
+        const receber = parseFloat(resumo.a_receber.pendente || 0);
         document.getElementById('kpi-a-pagar').textContent = fmt(pagar);
         document.getElementById('kpi-a-receber').textContent = fmt(receber);
         document.getElementById('kpi-atrasadas').textContent =
@@ -628,10 +610,6 @@ async function carregarContas() {
         const venceAmanha = c.status === 'pendente' && dtVenc.getTime() === amanha.getTime();
         const statusReal = atrasado ? 'atrasado' : c.status;
 
-        const mesesNomes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-        const dtUtc = new Date(c.vencimento + 'T12:00:00');
-        const mesAnoRef = `${mesesNomes[dtUtc.getMonth()]}/${dtUtc.getFullYear()}`;
-
         let alertaIcon = '';
         if (venceHoje) alertaIcon = ' <span title="Vence hoje!" style="color:var(--red)">⚠️</span>';
         if (venceAmanha) alertaIcon = ' <span title="Vence amanhã" style="color:#f59e0b">🔔</span>';
@@ -642,7 +620,6 @@ async function carregarContas() {
       <td>
         ${c.status === 'pendente' ? `<input type="checkbox" class="chk-conta" value="${c.id}" onchange="verificarCheckboxContas()" />` : ''}
       </td>
-      <td style="color:var(--text-muted);font-weight:600;font-size:13px">${mesAnoRef}</td>
       <td style="${atrasado || venceHoje ? 'color:var(--red)' : venceAmanha ? 'color:#f59e0b' : ''}">
         ${fmtData(c.vencimento)}${alertaIcon}
       </td>
@@ -651,29 +628,10 @@ async function carregarContas() {
       <td style="font-weight:600">${fmt(c.valor)}</td>
       <td>${statusBadge(statusReal)}</td>
       <td>
-        ${c.status === 'pendente' ? `<button class="btn btn-success" style="padding:4px 8px;font-size:12px;margin-bottom:4px;display:inline-block;width:100%" onclick="marcarPago(${c.id})">✔ Pago</button><br>` : ''}
-        <button class="btn btn-ghost" style="padding:4px 10px;font-size:12px;display:inline-block;width:100%;margin-bottom:4px" onclick='editarConta(${JSON.stringify(c).replace(/'/g, "&#39;")})'>✏️ Editar</button><br>
-        <button class="btn btn-danger" style="padding:4px 10px;font-size:12px;display:inline-block;width:100%" onclick="excluirConta(${c.id}, '${c.descricao.replace(/'/g, "\\'")}')">🗑️ Excluir</button>
+        ${c.status === 'pendente' ? `<button class="btn btn-success" style="padding:5px 12px;font-size:12px" onclick="marcarPago(${c.id})">✔ Pago</button>` : '—'}
       </td>
     </tr>`;
     }).join('');
-}
-
-async function excluirConta(id, desc) {
-    if (!confirm(`Tem certeza que deseja excluir a conta "${desc}"?`)) return;
-
-    try {
-        const { sucesso } = await apiFetch(`/api/contas/${id}`, { method: 'DELETE' });
-        if (sucesso) {
-            toast('Conta excluída com sucesso!');
-            carregarContas();
-            iniciarDashboard();
-        } else {
-            toast('Erro ao excluir conta.', 'error');
-        }
-    } catch {
-        toast('Erro de conexão.', 'error');
-    }
 }
 
 async function marcarPago(id) {
@@ -806,6 +764,15 @@ function exportarCSV() {
 }
 
 /* ═══════════════════════════════════════════════════════════
+   BACKUP DO SISTEMA
+═══════════════════════════════════════════════════════════ */
+function exportarBackupApp() {
+    toast('Gerando backup integrando todas as tabelas (receitas, despesas, contas), por favor aguarde...', 'info');
+    window.open(`/api/relatorios/backup`, '_blank');
+}
+
+
+/* ═══════════════════════════════════════════════════════════
    PÁGINA: DRE
 ═══════════════════════════════════════════════════════════ */
 async function carregarDRE() {
@@ -878,107 +845,21 @@ async function carregarCategorias(grupo, selectId, tipo) {
 ═══════════════════════════════════════════════════════════ */
 function abrirModalDespesa() {
     document.getElementById('form-despesa').reset();
-    document.getElementById('d-id').value = '';
-    document.getElementById('modal-despesa-titulo').textContent = '➕ Nova Despesa';
-    document.getElementById('btn-salvar-despesa').textContent = '💾 Salvar Despesa';
     document.getElementById('d-data').value = new Date().toISOString().split('T')[0];
     carregarCategorias('despesa', 'd-categoria', 'pessoal');
     document.getElementById('modal-despesa').classList.add('open');
 }
 
-function editarDespesa(d) {
-    document.getElementById('d-id').value = d.id;
-    document.getElementById('d-descricao').value = d.descricao || '';
-    document.getElementById('d-valor').value = d.valor || '';
-    document.getElementById('d-data').value = d.data || new Date().toISOString().split('T')[0];
-    document.getElementById('d-tipo').value = d.tipo || 'pessoal';
-
-    // Carregar categoria correta antes de setar o valor
-    carregarCategorias('despesa', 'd-categoria', d.tipo || 'pessoal').then(() => {
-        document.getElementById('d-categoria').value = d.categoria_id || '';
-    });
-
-    document.getElementById('d-status').value = d.status || 'pendente';
-    document.getElementById('d-fornecedor').value = d.fornecedor || '';
-    document.getElementById('d-obs').value = d.observacoes || '';
-
-    // Limpa arquivo anexado antes
-    document.getElementById('d-recibo').value = '';
-
-    document.getElementById('modal-despesa-titulo').textContent = '✏️ Editar Despesa';
-    document.getElementById('btn-salvar-despesa').textContent = '💾 Atualizar Despesa';
-    document.getElementById('modal-despesa').classList.add('open');
-}
-
 function abrirModalReceita() {
     document.getElementById('form-receita').reset();
-    document.getElementById('r-id').value = '';
-    document.getElementById('modal-receita-titulo').textContent = '➕ Nova Receita';
-    document.getElementById('btn-salvar-receita').textContent = '💾 Salvar Receita';
     document.getElementById('r-data').value = new Date().toISOString().split('T')[0];
     carregarCategorias('receita', 'r-categoria', 'pessoal');
     document.getElementById('modal-receita').classList.add('open');
 }
 
-function editarReceita(r) {
-    document.getElementById('r-id').value = r.id;
-    document.getElementById('r-descricao').value = r.descricao || '';
-    document.getElementById('r-valor').value = r.valor || '';
-    document.getElementById('r-data').value = r.data || new Date().toISOString().split('T')[0];
-    document.getElementById('r-tipo').value = r.tipo || 'pessoal';
-
-    // Carregar categoria correta antes de setar o valor
-    carregarCategorias('receita', 'r-categoria', r.tipo || 'pessoal').then(() => {
-        document.getElementById('r-categoria').value = r.categoria_id || '';
-    });
-
-    document.getElementById('r-status').value = r.status || 'pendente';
-    document.getElementById('r-obs').value = r.observacoes || '';
-
-    document.getElementById('modal-receita-titulo').textContent = '✏️ Editar Receita';
-    document.getElementById('btn-salvar-receita').textContent = '💾 Atualizar Receita';
-    document.getElementById('modal-receita').classList.add('open');
-}
-
 function abrirModalConta() {
     document.getElementById('form-conta').reset();
-    document.getElementById('c-id').value = '';
-    document.getElementById('modal-conta-titulo').textContent = '➕ Nova Conta';
-    document.getElementById('btn-salvar-conta').textContent = '💾 Salvar Conta';
     document.getElementById('c-vencimento').value = new Date().toISOString().split('T')[0];
-    const chkRecorrente = document.getElementById('c-recorrente');
-    if (chkRecorrente) {
-        chkRecorrente.checked = false;
-        chkRecorrente.parentElement.parentElement.parentElement.style.display = 'block';
-        document.getElementById('c-meses').disabled = true;
-        document.getElementById('c-meses').value = 12;
-    }
-    document.getElementById('modal-conta').classList.add('open');
-}
-
-function editarConta(c) {
-    document.getElementById('c-id').value = c.id;
-    document.getElementById('c-descricao').value = c.descricao || '';
-    document.getElementById('c-valor').value = c.valor || '';
-    document.getElementById('c-vencimento').value = c.vencimento || '';
-    document.getElementById('c-tipo-conta').value = c.tipo_conta || 'pagar';
-    document.getElementById('c-tipo').value = c.tipo || 'pessoal';
-    document.getElementById('c-obs').value = c.observacoes || '';
-
-    const chkRecorrente = document.getElementById('c-recorrente');
-    if (chkRecorrente) {
-        if (c.parcelas_total > 1) {
-            chkRecorrente.parentElement.parentElement.parentElement.style.display = 'none';
-        } else {
-            chkRecorrente.checked = false;
-            chkRecorrente.parentElement.parentElement.parentElement.style.display = 'block';
-            document.getElementById('c-meses').disabled = true;
-            document.getElementById('c-meses').value = 12;
-        }
-    }
-
-    document.getElementById('modal-conta-titulo').textContent = '✏️ Editar Conta';
-    document.getElementById('btn-salvar-conta').textContent = '💾 Atualizar Conta';
     document.getElementById('modal-conta').classList.add('open');
 }
 
@@ -1002,7 +883,6 @@ async function salvarDespesa(e) {
     btn.textContent = 'Salvando...'; btn.disabled = true;
 
     try {
-        const id = document.getElementById('d-id').value;
         const formData = new FormData();
         formData.append('descricao', document.getElementById('d-descricao').value);
         formData.append('valor', document.getElementById('d-valor').value);
@@ -1018,15 +898,12 @@ async function salvarDespesa(e) {
             formData.append('recibo', arquivo);
         }
 
-        const url = id ? `/api/despesas/${id}` : '/api/despesas';
-        const method = id ? 'PUT' : 'POST';
-
-        const { sucesso, erro } = await apiFetch(url, {
-            method, body: formData
+        const { sucesso, erro } = await apiFetch('/api/despesas', {
+            method: 'POST', body: formData
         });
 
         if (sucesso) {
-            toast(id ? 'Despesa atualizada com sucesso!' : 'Despesa cadastrada com sucesso!');
+            toast('Despesa cadastrada com sucesso!');
             fecharModal('modal-despesa');
             carregarDespesas();
             iniciarDashboard();
@@ -1036,9 +913,7 @@ async function salvarDespesa(e) {
     } catch (err) {
         toast('Erro de conexão.', 'error');
     } finally {
-        const id = document.getElementById('d-id').value;
-        btn.textContent = id ? '💾 Atualizar Despesa' : '💾 Salvar Despesa';
-        btn.disabled = false;
+        btn.textContent = '💾 Salvar Despesa'; btn.disabled = false;
     }
 }
 
@@ -1047,11 +922,7 @@ async function salvarDespesa(e) {
 ═══════════════════════════════════════════════════════════ */
 async function salvarReceita(e) {
     e.preventDefault();
-    const btn = document.getElementById('btn-salvar-receita');
-    btn.textContent = 'Salvando...'; btn.disabled = true;
-
     try {
-        const id = document.getElementById('r-id').value;
         const body = {
             descricao: document.getElementById('r-descricao').value,
             valor: document.getElementById('r-valor').value,
@@ -1062,28 +933,19 @@ async function salvarReceita(e) {
             observacoes: document.getElementById('r-obs').value
         };
 
-        const url = id ? `/api/receitas/${id}` : '/api/receitas';
-        const method = id ? 'PUT' : 'POST';
-
-        const { sucesso, erro } = await apiFetch(url, {
-            method, body: JSON.stringify(body)
+        const { sucesso, erro } = await apiFetch('/api/receitas', {
+            method: 'POST', body: JSON.stringify(body)
         });
 
         if (sucesso) {
-            toast(id ? 'Receita atualizada com sucesso!' : 'Receita cadastrada com sucesso!');
+            toast('Receita cadastrada com sucesso!');
             fecharModal('modal-receita');
             carregarReceitas();
             iniciarDashboard();
         } else {
             toast(erro || 'Erro ao salvar receita.', 'error');
         }
-    } catch {
-        toast('Erro de conexão.', 'error');
-    } finally {
-        const id = document.getElementById('r-id').value;
-        btn.textContent = id ? '💾 Atualizar Receita' : '💾 Salvar Receita';
-        btn.disabled = false;
-    }
+    } catch { toast('Erro de conexão.', 'error'); }
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -1091,44 +953,28 @@ async function salvarReceita(e) {
 ═══════════════════════════════════════════════════════════ */
 async function salvarConta(e) {
     e.preventDefault();
-    const btn = document.getElementById('btn-salvar-conta');
-    btn.textContent = 'Salvando...'; btn.disabled = true;
-
     try {
-        const id = document.getElementById('c-id').value;
         const body = {
             descricao: document.getElementById('c-descricao').value,
             valor: document.getElementById('c-valor').value,
             vencimento: document.getElementById('c-vencimento').value,
             tipo_conta: document.getElementById('c-tipo-conta').value,
             tipo: document.getElementById('c-tipo').value,
-            observacoes: document.getElementById('c-obs').value,
-            recorrente: document.getElementById('c-recorrente') ? document.getElementById('c-recorrente').checked : false,
-            parcelas_total: document.getElementById('c-meses') ? document.getElementById('c-meses').value : 12
+            observacoes: document.getElementById('c-obs').value
         };
 
-        const url = id ? `/api/contas/${id}` : '/api/contas';
-        const method = id ? 'PUT' : 'POST';
-
-        const { sucesso, erro } = await apiFetch(url, {
-            method, body: JSON.stringify(body)
+        const { sucesso, erro } = await apiFetch('/api/contas', {
+            method: 'POST', body: JSON.stringify(body)
         });
 
         if (sucesso) {
-            toast(id ? 'Conta atualizada com sucesso!' : 'Conta cadastrada com sucesso!');
+            toast('Conta cadastrada com sucesso!');
             fecharModal('modal-conta');
             carregarContas();
-            iniciarDashboard();
         } else {
             toast(erro || 'Erro ao salvar conta.', 'error');
         }
-    } catch {
-        toast('Erro de conexão.', 'error');
-    } finally {
-        const id = document.getElementById('c-id').value;
-        btn.textContent = id ? '💾 Atualizar Conta' : '💾 Salvar Conta';
-        btn.disabled = false;
-    }
+    } catch { toast('Erro de conexão.', 'error'); }
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -1327,229 +1173,6 @@ async function excluirCliente(id, nome) {
             carregarClientes();
         } else {
             toast(erro || 'Erro ao excluir cliente.', 'error');
-        }
-    } catch {
-        toast('Erro de conexão.', 'error');
-    }
-}
-
-/* ───────────────────────────────────────────────────────────
-   PÁGINA: PROJETOS
-─────────────────────────────────────────────────────────── */
-async function carregarProjetos() {
-    const tbody = document.getElementById('tabela-projetos');
-    tbody.innerHTML = `<tr><td colspan="6"><div class="skeleton"></div></td></tr>`;
-
-    const { dados } = await apiFetch(`/api/projetos`);
-
-    if (!dados || dados.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="icon">📂</div><p>Nenhum projeto cadastrado</p></div></td></tr>`;
-        return;
-    }
-
-    tbody.innerHTML = dados.map(p => `
-    <tr>
-      <td><strong>${p.nome}</strong></td>
-      <td>${fmtData(p.data_inicio)}</td>
-      <td>${fmtData(p.data_fim)}</td>
-      <td>${badge(p.status, p.status === 'ativo' ? 'recebido' : p.status === 'cancelado' ? 'cancelado' : 'pago')}</td>
-      <td style="color:var(--green);font-weight:600">${fmt(p.orcamento)}</td>
-      <td>
-        <button class="btn btn-ghost" style="padding:4px 8px;font-size:12px" onclick='editarProjeto(${JSON.stringify(p).replace(/'/g, "&#39;")})'>✏️</button>
-        <button class="btn btn-ghost" style="padding:4px 8px;font-size:12px;color:var(--red)" onclick="excluirProjeto('${p.id}', '${p.nome}')">🗑️</button>
-      </td>
-    </tr>
-  `).join('');
-}
-
-function abrirModalProjeto() {
-    document.getElementById('form-projeto').reset();
-    document.getElementById('proj-id').value = '';
-    document.getElementById('modal-projeto-titulo').textContent = '➕ Novo Projeto';
-    document.getElementById('modal-projeto').classList.add('open');
-}
-
-function editarProjeto(p) {
-    document.getElementById('proj-id').value = p.id;
-    document.getElementById('proj-nome').value = p.nome || '';
-    document.getElementById('proj-inicio').value = p.data_inicio || '';
-    document.getElementById('proj-fim').value = p.data_fim || '';
-    document.getElementById('proj-status').value = p.status || 'ativo';
-    document.getElementById('proj-orcamento').value = p.orcamento || '';
-    document.getElementById('proj-descricao').value = p.descricao || '';
-    document.getElementById('modal-projeto-titulo').textContent = '✏️ Editar Projeto';
-    document.getElementById('modal-projeto').classList.add('open');
-}
-
-async function salvarProjeto(e) {
-    e.preventDefault();
-    const btn = document.getElementById('btn-salvar-projeto');
-    btn.disabled = true;
-    btn.textContent = 'Salvando...';
-
-    const id = document.getElementById('proj-id').value;
-    const body = {
-        nome: document.getElementById('proj-nome').value.trim(),
-        data_inicio: document.getElementById('proj-inicio').value || null,
-        data_fim: document.getElementById('proj-fim').value || null,
-        status: document.getElementById('proj-status').value,
-        orcamento: document.getElementById('proj-orcamento').value || 0,
-        descricao: document.getElementById('proj-descricao').value.trim() || null
-    };
-
-    try {
-        const url = id ? `/api/projetos/${id}` : '/api/projetos';
-        const method = id ? 'PUT' : 'POST';
-
-        const { sucesso, erro } = await apiFetch(url, { method, body: JSON.stringify(body) });
-
-        if (sucesso) {
-            toast(id ? 'Projeto atualizado com sucesso!' : 'Projeto criado com sucesso!');
-            fecharModal('modal-projeto');
-            carregarProjetos();
-        } else {
-            toast(erro || 'Erro ao salvar projeto.', 'error');
-        }
-    } catch {
-        toast('Erro de conexão.', 'error');
-    } finally {
-        btn.disabled = false;
-        btn.textContent = id ? '💾 Atualizar Projeto' : '💾 Salvar Projeto';
-    }
-}
-
-async function excluirProjeto(id, nome) {
-    if (!confirm(`Deseja excluir o projeto "${nome}"?\nEsta ação também pode desvincular equipamentos alocados a ele.`)) return;
-    try {
-        const { sucesso, erro } = await apiFetch(`/api/projetos/${id}`, { method: 'DELETE' });
-        if (sucesso) {
-            toast(`Projeto "${nome}" excluído!`);
-            carregarProjetos();
-        } else {
-            toast(erro || 'Erro ao excluir projeto.', 'error');
-        }
-    } catch {
-        toast('Erro de conexão.', 'error');
-    }
-}
-
-/* ───────────────────────────────────────────────────────────
-   PÁGINA: EQUIPAMENTOS
-─────────────────────────────────────────────────────────── */
-async function carregarEquipamentos() {
-    const tbody = document.getElementById('tabela-equipamentos');
-    tbody.innerHTML = `<tr><td colspan="7"><div class="skeleton"></div></td></tr>`;
-
-    const { dados } = await apiFetch(`/api/equipamentos`);
-
-    if (!dados || dados.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="icon">🔧</div><p>Nenhum equipamento cadastrado</p></div></td></tr>`;
-        return;
-    }
-
-    tbody.innerHTML = dados.map(eq => `
-    <tr>
-      <td><strong>${eq.nome}</strong></td>
-      <td>${eq.numero_serie || '—'}</td>
-      <td>${fmtData(eq.data_aquisicao)}</td>
-      <td style="color:var(--text);font-weight:600">${fmt(eq.valor)}</td>
-      <td><span class="badge" style="background:rgba(255,255,255,0.05);color:var(--text-muted)">${eq.projetos?.nome || 'Uso Interno'}</span></td>
-      <td>${badge(eq.status, eq.status === 'ativo' ? 'recebido' : eq.status === 'manutencao' ? 'atrasado' : 'cancelado')}</td>
-      <td>
-        <button class="btn btn-ghost" style="padding:4px 8px;font-size:12px" onclick='editarEquipamento(${JSON.stringify(eq).replace(/'/g, "&#39;")})'>✏️</button>
-        <button class="btn btn-ghost" style="padding:4px 8px;font-size:12px;color:var(--red)" onclick="excluirEquipamento('${eq.id}', '${eq.nome}')">🗑️</button>
-      </td>
-    </tr>
-  `).join('');
-}
-
-async function carregarListaProjetos() {
-    const select = document.getElementById('eqp-projeto');
-    select.innerHTML = '<option value="">Carregando...</option>';
-    try {
-        const { dados } = await apiFetch('/api/projetos');
-        select.innerHTML = '<option value="">Nenhum / Uso Interno</option>';
-        if (dados && dados.length > 0) {
-            dados.forEach(p => {
-                select.innerHTML += `<option value="${p.id}">${p.nome}</option>`;
-            });
-        }
-    } catch {
-        select.innerHTML = '<option value="">Erro ao carregar</option>';
-    }
-}
-
-async function abrirModalEquipamento() {
-    document.getElementById('form-equipamento').reset();
-    document.getElementById('eqp-id').value = '';
-    document.getElementById('modal-equipamento-titulo').textContent = '➕ Novo Equipamento';
-    await carregarListaProjetos();
-    document.getElementById('modal-equipamento').classList.add('open');
-}
-
-async function editarEquipamento(eq) {
-    document.getElementById('eqp-id').value = eq.id;
-    document.getElementById('eqp-nome').value = eq.nome || '';
-    document.getElementById('eqp-serie').value = eq.numero_serie || '';
-    document.getElementById('eqp-aquisicao').value = eq.data_aquisicao || '';
-    document.getElementById('eqp-valor').value = eq.valor || '';
-    document.getElementById('eqp-status').value = eq.status || 'ativo';
-    document.getElementById('eqp-descricao').value = eq.descricao || '';
-
-    await carregarListaProjetos();
-    document.getElementById('eqp-projeto').value = eq.projeto_id || '';
-
-    document.getElementById('modal-equipamento-titulo').textContent = '✏️ Editar Equipamento';
-    document.getElementById('modal-equipamento').classList.add('open');
-}
-
-async function salvarEquipamento(e) {
-    e.preventDefault();
-    const btn = document.getElementById('btn-salvar-equipamento');
-    btn.disabled = true;
-    btn.textContent = 'Salvando...';
-
-    const id = document.getElementById('eqp-id').value;
-    const body = {
-        nome: document.getElementById('eqp-nome').value.trim(),
-        numero_serie: document.getElementById('eqp-serie').value.trim() || null,
-        data_aquisicao: document.getElementById('eqp-aquisicao').value || null,
-        valor: document.getElementById('eqp-valor').value || 0,
-        status: document.getElementById('eqp-status').value,
-        projeto_id: document.getElementById('eqp-projeto').value || null,
-        descricao: document.getElementById('eqp-descricao').value.trim() || null
-    };
-
-    try {
-        const url = id ? `/api/equipamentos/${id}` : '/api/equipamentos';
-        const method = id ? 'PUT' : 'POST';
-
-        const { sucesso, erro } = await apiFetch(url, { method, body: JSON.stringify(body) });
-
-        if (sucesso) {
-            toast(id ? 'Equipamento atualizado com sucesso!' : 'Equipamento cadastrado com sucesso!');
-            fecharModal('modal-equipamento');
-            carregarEquipamentos();
-        } else {
-            toast(erro || 'Erro ao salvar equipamento.', 'error');
-        }
-    } catch {
-        toast('Erro de conexão.', 'error');
-    } finally {
-        btn.disabled = false;
-        btn.textContent = id ? '💾 Atualizar Equipamento' : '💾 Salvar Equipamento';
-    }
-}
-
-async function excluirEquipamento(id, nome) {
-    if (!confirm(`Deseja excluir o equipamento "${nome}"?\nEsta ação não pode ser desfeita.`)) return;
-    try {
-        const { sucesso, erro } = await apiFetch(`/api/equipamentos/${id}`, { method: 'DELETE' });
-        if (sucesso) {
-            toast(`Equipamento "${nome}" excluído!`);
-            carregarEquipamentos();
-        } else {
-            toast(erro || 'Erro ao excluir equipamento.', 'error');
         }
     } catch {
         toast('Erro de conexão.', 'error');

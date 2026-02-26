@@ -174,4 +174,45 @@ router.get('/exportar', async (req, res) => {
     }
 });
 
+// GET /api/relatorios/backup
+// Exporta todos os dados (receitas, despesas, contas, clientes, categorias)
+router.get('/backup', async (req, res) => {
+    try {
+        const [
+            { data: receitas, error: errR },
+            { data: despesas, error: errD },
+            { data: contas, error: errC },
+            { data: clientes, error: errCl },
+            { data: categorias, error: errCat }
+        ] = await Promise.all([
+            supabase.from('receitas').select('*'),
+            supabase.from('despesas').select('*'),
+            supabase.from('contas_pagar_receber').select('*'),
+            supabase.from('clientes').select('*'),
+            supabase.from('categorias').select('*')
+        ]);
+
+        if (errR || errD || errC || errCl || errCat) {
+            throw new Error('Erro ao buscar dados do Supabase.');
+        }
+
+        const backupData = {
+            data_geracao: new Date().toISOString(),
+            receitas: receitas || [],
+            despesas: despesas || [],
+            contas_pagar_receber: contas || [],
+            clientes: clientes || [],
+            categorias: categorias || []
+        };
+
+        const jsonStr = JSON.stringify(backupData, null, 2);
+
+        res.header('Content-Type', 'application/json; charset=utf-8');
+        res.attachment(`backup_financeiro_completo_${new Date().toISOString().split('T')[0]}.json`);
+        return res.send(jsonStr);
+    } catch (err) {
+        res.status(500).json({ sucesso: false, erro: err.message });
+    }
+});
+
 export default router;
