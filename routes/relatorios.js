@@ -109,7 +109,7 @@ router.get('/dashboard', async (req, res) => {
         const [{ data: receitas }, { data: despesas }, { data: contas }] = await Promise.all([
             supabase.from('receitas').select('valor, tipo, status').gte('data', inicioMes).lt('data', fimMesStr),
             supabase.from('despesas').select('valor, tipo, status').gte('data', inicioMes).lt('data', fimMesStr),
-            supabase.from('contas_pagar_receber').select('valor, tipo_conta, status').lte('vencimento', fimMesStr).neq('status', 'pago')
+            supabase.from('contas_pagar_receber').select('valor, tipo_conta, status').gte('vencimento', inicioMes).lt('vencimento', fimMesStr).eq('status', 'pendente')
         ]);
 
         const somarPor = (arr, campo, valorCampo, statusFiltro) =>
