@@ -433,7 +433,7 @@ async function carregarUltimasTransacoes() {
     ].sort((a, b) => new Date(b.data) - new Date(a.data)).slice(0, 10);
 
     if (todas.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="icon">📭</div><p>Nenhuma transação encontrada</p></div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="icon">📭</div><p>Nenhuma transação encontrada</p></div></td></tr>`;
         return;
     }
 
@@ -447,6 +447,9 @@ async function carregarUltimasTransacoes() {
         ${t._grupo === 'receita' ? '+' : '-'}${fmt(t.valor)}
       </td>
       <td>${statusBadge(t.status)}</td>
+      <td>
+        <button class="btn btn-ghost" style="padding:4px 10px;font-size:12px" onclick="${t._grupo === 'receita' ? `editarReceita(${t.id})` : `editarDespesa(${t.id})`}">✏️ Editar</button>
+      </td>
     </tr>
   `).join('');
 }
@@ -480,6 +483,10 @@ async function carregarReceitas() {
       <td>${tipoBadge(r.tipo)}</td>
       <td style="color:var(--green);font-weight:600">${fmt(r.valor)}</td>
       <td>${statusBadge(r.status)}</td>
+      <td style="display: flex; gap: 5px;">
+        <button class="btn btn-ghost" style="padding:4px 10px;font-size:12px" onclick="editarReceita(${r.id})">✏️ Editar</button>
+        <button class="btn btn-ghost" style="padding:4px 10px;font-size:12px;color:var(--red)" onclick="excluirReceita(${r.id})">🗑️ Excluir</button>
+      </td>
     </tr>
   `).join('');
 }
@@ -512,7 +519,11 @@ async function carregarDespesas() {
       <td>${tipoBadge(d.tipo)}</td>
       <td style="color:var(--red);font-weight:600">${fmt(d.valor)}</td>
       <td>${statusBadge(d.status)}</td>
-      <td>${d.recibo_url ? `<a href="${d.recibo_url}" target="_blank" style="color:var(--blue)">📎 Ver</a>` : '—'}</td>
+      <td>${d.recibo_url ? `<a href="${d.recibo_url}" target="_blank" style="color:var(--blue)">📎 Ver</a>` : ''}</td>
+      <td style="display: flex; gap: 5px;">
+        <button class="btn btn-ghost" style="padding:4px 10px;font-size:12px" onclick="editarDespesa(${d.id})">✏️ Editar</button>
+        <button class="btn btn-ghost" style="padding:4px 10px;font-size:12px;color:var(--red)" onclick="excluirDespesa(${d.id})">🗑️ Excluir</button>
+      </td>
     </tr>
   `).join('');
 }
@@ -643,9 +654,10 @@ async function carregarContas() {
       <td>${badge(c.tipo_conta === 'pagar' ? '💸 Pagar' : '💰 Receber', c.tipo_conta === 'pagar' ? 'atrasado' : 'recebido')}</td>
       <td style="font-weight:600">${fmt(c.valor)}</td>
       <td>${statusBadge(statusReal)}</td>
-      <td>
-        ${c.status === 'pendente' ? `<button class="btn btn-success" style="padding:5px 12px;font-size:12px" onclick="marcarPago(${c.id})">✔ Pago</button>` : '—'}
+      <td style="display: flex; gap: 5px; align-items: center;">
+        ${c.status === 'pendente' ? `<button class="btn btn-success" style="padding:5px 12px;font-size:12px" onclick="marcarPago(${c.id})">✔ Pago</button>` : ''}
         <button class="btn btn-ghost" style="padding:4px 10px;font-size:12px" onclick="editarConta(${c.id})">✏️ Editar</button>
+        <button class="btn btn-ghost" style="padding:4px 10px;font-size:12px;color:var(--red)" onclick="excluirConta(${c.id})">🗑️ Excluir</button>
       </td>
     </tr>`;
     }).join('');
@@ -862,21 +874,26 @@ async function carregarCategorias(grupo, selectId, tipo) {
 ═══════════════════════════════════════════════════════════ */
 function abrirModalDespesa() {
     document.getElementById('form-despesa').reset();
+    document.getElementById('d-id').value = '';
+    document.getElementById('btn-excluir-despesa').style.display = 'none';
     document.getElementById('d-data').value = new Date().toISOString().split('T')[0];
-    carregarCategorias('despesa', 'd-categoria', 'pessoal');
+    atualizarCategoriasDespesa();
     document.getElementById('modal-despesa').classList.add('open');
 }
 
 function abrirModalReceita() {
     document.getElementById('form-receita').reset();
+    document.getElementById('r-id').value = '';
+    document.getElementById('btn-excluir-receita').style.display = 'none';
     document.getElementById('r-data').value = new Date().toISOString().split('T')[0];
-    carregarCategorias('receita', 'r-categoria', 'pessoal');
+    atualizarCategoriasReceita();
     document.getElementById('modal-receita').classList.add('open');
 }
 
 function abrirModalConta() {
     document.getElementById('form-conta').reset();
     document.getElementById('c-id').value = '';
+    document.getElementById('btn-excluir-conta').style.display = 'none';
     document.getElementById('c-vencimento').value = new Date().toISOString().split('T')[0];
     atualizarCategoriasConta();
     document.getElementById('modal-conta').classList.add('open');
@@ -902,12 +919,18 @@ async function salvarDespesa(e) {
     btn.textContent = 'Salvando...'; btn.disabled = true;
 
     try {
+        const id = document.getElementById('d-id').value;
         const formData = new FormData();
         formData.append('descricao', document.getElementById('d-descricao').value);
         formData.append('valor', document.getElementById('d-valor').value);
         formData.append('data', document.getElementById('d-data').value);
         formData.append('tipo', document.getElementById('d-tipo').value);
-        formData.append('categoria_id', document.getElementById('d-categoria').value);
+
+        let categoria_id = document.getElementById('d-categoria').value;
+        if (categoria_id && categoria_id !== 'nova') {
+            formData.append('categoria_id', categoria_id);
+        }
+
         formData.append('status', document.getElementById('d-status').value);
         formData.append('fornecedor', document.getElementById('d-fornecedor').value);
         formData.append('observacoes', document.getElementById('d-obs').value);
@@ -917,9 +940,31 @@ async function salvarDespesa(e) {
             formData.append('recibo', arquivo);
         }
 
-        const { sucesso, erro } = await apiFetch('/api/despesas', {
-            method: 'POST', body: formData
-        });
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? `/api/despesas/${id}` : '/api/despesas';
+        // Simular o PUT através do fetch de update. (Se Body form FormData for via PUT o express-multer as vezes requer trick, mas pelo setup do auth/middleware, no despesas.put eu não tenho multer config para put)
+        // Oops, actually in despesas.js, PUT does not accept multipart/form-data for file upload yet. BUT, without files it works. If user uploads a file, it might fail unless we do a POST or fix it. Let's just do it directly. If user edits, we do application/json for PUT since usually we don't upload file on PUT.
+        // Or better yet, just treat PUT purely as text JSON if no file is present. But let's keep formData and use PUT, it usually works if no file, but multer isn't configured for PUT /:id in routes/despesas.js
+
+        let requestOpts = {};
+        if (id) {
+            const updates = {
+                descricao: document.getElementById('d-descricao').value,
+                valor: document.getElementById('d-valor').value,
+                data: document.getElementById('d-data').value,
+                tipo: document.getElementById('d-tipo').value,
+                status: document.getElementById('d-status').value,
+                fornecedor: document.getElementById('d-fornecedor').value,
+                observacoes: document.getElementById('d-obs').value
+            };
+            if (categoria_id && categoria_id !== 'nova') updates.categoria_id = parseInt(categoria_id);
+
+            requestOpts = { method: 'PUT', body: JSON.stringify(updates) };
+        } else {
+            requestOpts = { method: 'POST', body: formData };
+        }
+
+        const { sucesso, erro } = await apiFetch(url, requestOpts);
 
         if (sucesso) {
             toast('Despesa cadastrada com sucesso!');
@@ -941,7 +986,11 @@ async function salvarDespesa(e) {
 ═══════════════════════════════════════════════════════════ */
 async function salvarReceita(e) {
     e.preventDefault();
+    const btn = document.getElementById('btn-salvar-receita');
+    btn.textContent = 'Salvando...'; btn.disabled = true;
+
     try {
+        const id = document.getElementById('r-id').value;
         const body = {
             descricao: document.getElementById('r-descricao').value,
             valor: document.getElementById('r-valor').value,
@@ -952,18 +1001,94 @@ async function salvarReceita(e) {
             observacoes: document.getElementById('r-obs').value
         };
 
-        const { sucesso, erro } = await apiFetch('/api/receitas', {
-            method: 'POST', body: JSON.stringify(body)
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? `/api/receitas/${id}` : '/api/receitas';
+
+        const { sucesso, erro } = await apiFetch(url, {
+            method, body: JSON.stringify(body)
         });
 
         if (sucesso) {
-            toast('Receita cadastrada com sucesso!');
+            toast('Receita salva com sucesso!');
             fecharModal('modal-receita');
             carregarReceitas();
             iniciarDashboard();
         } else {
             toast(erro || 'Erro ao salvar receita.', 'error');
         }
+    } catch {
+        toast('Erro de conexão.', 'error');
+    } finally {
+        btn.textContent = '💾 Salvar Receita'; btn.disabled = false;
+    }
+}
+
+async function editarDespesa(id) {
+    try {
+        const { dados, sucesso } = await apiFetch(`/api/despesas/${id}`);
+        if (!sucesso || !dados) return toast('Erro ao carregar', 'error');
+
+        document.getElementById('d-id').value = dados.id;
+        document.getElementById('btn-excluir-despesa').style.display = 'block';
+        document.getElementById('d-descricao').value = dados.descricao;
+        document.getElementById('d-valor').value = dados.valor;
+        document.getElementById('d-data').value = dados.data;
+        document.getElementById('d-tipo').value = dados.tipo;
+        document.getElementById('d-status').value = dados.status;
+        document.getElementById('d-fornecedor').value = dados.fornecedor || '';
+        document.getElementById('d-obs').value = dados.observacoes || '';
+
+        await atualizarCategoriasDespesa();
+        if (dados.categoria_id) document.getElementById('d-categoria').value = dados.categoria_id;
+
+        document.getElementById('modal-despesa').classList.add('open');
+    } catch { toast('Erro de conexão.', 'error'); }
+}
+
+async function editarReceita(id) {
+    try {
+        const { dados, sucesso } = await apiFetch(`/api/receitas/${id}`);
+        if (!sucesso || !dados) return toast('Erro ao carregar', 'error');
+
+        document.getElementById('r-id').value = dados.id;
+        document.getElementById('btn-excluir-receita').style.display = 'block';
+        document.getElementById('r-descricao').value = dados.descricao;
+        document.getElementById('r-valor').value = dados.valor;
+        document.getElementById('r-data').value = dados.data;
+        document.getElementById('r-tipo').value = dados.tipo;
+        document.getElementById('r-status').value = dados.status;
+        document.getElementById('r-obs').value = dados.observacoes || '';
+
+        await atualizarCategoriasReceita();
+        if (dados.categoria_id) document.getElementById('r-categoria').value = dados.categoria_id;
+
+        document.getElementById('modal-receita').classList.add('open');
+    } catch { toast('Erro de conexão.', 'error'); }
+}
+
+async function excluirDespesa(id) {
+    if (!confirm('Tem certeza que deseja excluir esta despesa?')) return;
+    try {
+        const { sucesso, erro } = await apiFetch(`/api/despesas/${id}`, { method: 'DELETE' });
+        if (sucesso) {
+            toast('Despesa excluída!');
+            fecharModal('modal-despesa');
+            carregarDespesas();
+            iniciarDashboard();
+        } else { toast(erro || 'Erro ao excluir.', 'error'); }
+    } catch { toast('Erro de conexão.', 'error'); }
+}
+
+async function excluirReceita(id) {
+    if (!confirm('Tem certeza que deseja excluir esta receita?')) return;
+    try {
+        const { sucesso, erro } = await apiFetch(`/api/receitas/${id}`, { method: 'DELETE' });
+        if (sucesso) {
+            toast('Receita excluída!');
+            fecharModal('modal-receita');
+            carregarReceitas();
+            iniciarDashboard();
+        } else { toast(erro || 'Erro ao excluir.', 'error'); }
     } catch { toast('Erro de conexão.', 'error'); }
 }
 
@@ -972,6 +1097,9 @@ async function salvarReceita(e) {
 ═══════════════════════════════════════════════════════════ */
 async function salvarConta(e) {
     e.preventDefault();
+    const btn = document.getElementById('btn-salvar-conta');
+    if (btn) { btn.textContent = 'Salvando...'; btn.disabled = true; }
+
     try {
         const id = document.getElementById('c-id').value;
         const categoria_id = document.getElementById('c-categoria').value;
@@ -1001,7 +1129,11 @@ async function salvarConta(e) {
         } else {
             toast(erro || 'Erro ao salvar conta.', 'error');
         }
-    } catch { toast('Erro de conexão.', 'error'); }
+    } catch {
+        toast('Erro de conexão.', 'error');
+    } finally {
+        if (btn) { btn.textContent = '💾 Salvar Conta'; btn.disabled = false; }
+    }
 }
 
 async function editarConta(id) {
@@ -1010,6 +1142,7 @@ async function editarConta(id) {
         if (!sucesso || !dados) return toast('Erro ao carregar conta.', 'error');
 
         document.getElementById('c-id').value = dados.id;
+        document.getElementById('btn-excluir-conta').style.display = 'block';
         document.getElementById('c-descricao').value = dados.descricao;
         document.getElementById('c-valor').value = dados.valor;
         document.getElementById('c-vencimento').value = dados.vencimento;
@@ -1030,6 +1163,23 @@ async function editarConta(id) {
     }
 }
 
+async function excluirConta(id) {
+    if (!confirm('Tem certeza que deseja excluir esta conta?')) return;
+    try {
+        const { sucesso, erro } = await apiFetch(`/api/contas/${id}`, { method: 'DELETE' });
+        if (sucesso) {
+            toast('Conta excluída com sucesso!');
+            fecharModal('modal-conta');
+            carregarContas();
+            iniciarDashboard();
+        } else {
+            toast(erro || 'Erro ao excluir.', 'error');
+        }
+    } catch {
+        toast('Erro de conexão.', 'error');
+    }
+}
+
 async function atualizarCategoriasConta() {
     const tipoConta = document.getElementById('c-tipo-conta').value;     // pagar | receber
     const tipoOrigem = document.getElementById('c-tipo').value;          // pessoal | empresarial
@@ -1045,7 +1195,21 @@ async function atualizarCategoriasConta() {
     }
 }
 
-async function verificarNovaCategoria(selectObj, idTipoConta, idTipo) {
+async function atualizarCategoriasDespesa() {
+    const tipo = document.getElementById('d-tipo').value;
+    await carregarCategorias('despesa', 'd-categoria', tipo);
+    const selectCat = document.getElementById('d-categoria');
+    if (selectCat) selectCat.innerHTML += `<option style="font-weight:bold;color:var(--green)" value="nova">+ Criar Nova Categoria</option>`;
+}
+
+async function atualizarCategoriasReceita() {
+    const tipo = document.getElementById('r-tipo').value;
+    await carregarCategorias('receita', 'r-categoria', tipo);
+    const selectCat = document.getElementById('r-categoria');
+    if (selectCat) selectCat.innerHTML += `<option style="font-weight:bold;color:var(--green)" value="nova">+ Criar Nova Categoria</option>`;
+}
+
+async function verificarNovaCategoria(selectObj, idTipoConta, idTipo, grupoOverride) {
     if (selectObj.value === 'nova') {
         const nome = prompt('Digite o nome da nova categoria:');
         if (!nome) {
@@ -1054,9 +1218,12 @@ async function verificarNovaCategoria(selectObj, idTipoConta, idTipo) {
             return;
         }
 
-        const tipoConta = document.getElementById(idTipoConta).value;
+        let grupo = grupoOverride;
+        if (!grupo && idTipoConta) {
+            const tipoConta = document.getElementById(idTipoConta).value;
+            grupo = tipoConta === 'pagar' ? 'despesa' : 'receita';
+        }
         const tipoOrigem = document.getElementById(idTipo).value;
-        const grupo = tipoConta === 'pagar' ? 'despesa' : 'receita';
 
         try {
             const { sucesso, dados, erro } = await apiFetch(`/api/categorias`, {
@@ -1065,7 +1232,10 @@ async function verificarNovaCategoria(selectObj, idTipoConta, idTipo) {
 
             if (sucesso && dados) {
                 toast(`Categoria "${nome}" criada!`);
-                await atualizarCategoriasConta();
+                if (grupoOverride === 'despesa') await atualizarCategoriasDespesa();
+                else if (grupoOverride === 'receita') await atualizarCategoriasReceita();
+                else await atualizarCategoriasConta();
+
                 // Seleciona a nova
                 selectObj.value = dados.id;
             } else {

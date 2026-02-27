@@ -635,6 +635,8 @@ textarea {
   font-size: 14px;
   transition: border-color 0.2s;
   outline: none;
+  width: 100%;
+  max-width: 100%;
 }
 
 input:focus,

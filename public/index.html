@@ -9,7 +9,7 @@
     content="Dashboard financeiro com controle de receitas, despesas, contas a pagar/receber, fluxo de caixa e DRE simplificado." />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0a0f1e" id="meta-theme-color">
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=2" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
 </head>
 
@@ -207,11 +207,12 @@
                   <th>Tipo</th>
                   <th>Valor</th>
                   <th>Status</th>
+                  <th>Ações</th>
                 </tr>
               </thead>
               <tbody id="tabela-transacoes">
                 <tr>
-                  <td colspan="6">
+                  <td colspan="7">
                     <div class="skeleton" style="margin:12px 0"></div>
                   </td>
                 </tr>
@@ -247,11 +248,12 @@
                   <th>Tipo</th>
                   <th>Valor</th>
                   <th>Status</th>
+                  <th>Ações</th>
                 </tr>
               </thead>
               <tbody id="tabela-receitas">
                 <tr>
-                  <td colspan="6" class="empty-state">
+                  <td colspan="7" class="empty-state">
                     <div class="icon">📭</div>
                     <p>Nenhuma receita cadastrada</p>
                   </td>
@@ -289,11 +291,12 @@
                   <th>Valor</th>
                   <th>Status</th>
                   <th>Recibo</th>
+                  <th>Ações</th>
                 </tr>
               </thead>
               <tbody id="tabela-despesas">
                 <tr>
-                  <td colspan="7" class="empty-state">
+                  <td colspan="8" class="empty-state">
                     <div class="icon">📭</div>
                     <p>Nenhuma despesa cadastrada</p>
                   </td>
@@ -521,6 +524,7 @@
         <button class="btn-close" onclick="fecharModal('modal-despesa')">✕</button>
       </div>
       <form id="form-despesa" onsubmit="salvarDespesa(event)">
+        <input type="hidden" id="d-id" value="" />
         <div class="form-grid">
           <div class="form-group full">
             <label for="d-descricao">Descrição *</label>
@@ -536,15 +540,18 @@
           </div>
           <div class="form-group">
             <label for="d-tipo">Tipo *</label>
-            <select id="d-tipo" onchange="carregarCategorias('despesa', 'd-categoria', this.value)">
+            <select id="d-tipo" onchange="atualizarCategoriasDespesa()">
               <option value="pessoal">Pessoal</option>
               <option value="empresarial">Empresarial</option>
               <option value="outros">Outros</option>
             </select>
           </div>
-          <div class="form-group">
+          <div class="form-group" style="position: relative;">
             <label for="d-categoria">Categoria *</label>
-            <select id="d-categoria" required></select>
+            <div style="display:flex;gap:5px;">
+              <select id="d-categoria" required style="flex:1"
+                onchange="verificarNovaCategoria(this, null, 'd-tipo', 'despesa')"></select>
+            </div>
           </div>
           <div class="form-group">
             <label for="d-status">Status</label>
@@ -566,9 +573,13 @@
             <textarea id="d-obs" rows="2" placeholder="Observações adicionais..."></textarea>
           </div>
         </div>
-        <div class="form-actions">
-          <button type="button" class="btn btn-ghost" onclick="fecharModal('modal-despesa')">Cancelar</button>
-          <button type="submit" class="btn btn-danger" id="btn-salvar-despesa">💾 Salvar Despesa</button>
+        <div class="form-actions" style="justify-content: space-between; display: flex; width: 100%;">
+          <button type="button" class="btn btn-ghost" id="btn-excluir-despesa" style="display:none; color: var(--red);"
+            onclick="excluirDespesa(document.getElementById('d-id').value)">🗑️ Excluir</button>
+          <div style="display:flex; gap:10px; margin-left:auto">
+            <button type="button" class="btn btn-ghost" onclick="fecharModal('modal-despesa')">Cancelar</button>
+            <button type="submit" class="btn btn-danger" id="btn-salvar-despesa">💾 Salvar Despesa</button>
+          </div>
         </div>
       </form>
     </div>
@@ -584,6 +595,7 @@
         <button class="btn-close" onclick="fecharModal('modal-receita')">✕</button>
       </div>
       <form id="form-receita" onsubmit="salvarReceita(event)">
+        <input type="hidden" id="r-id" value="" />
         <div class="form-grid">
           <div class="form-group full">
             <label for="r-descricao">Descrição *</label>
@@ -599,15 +611,18 @@
           </div>
           <div class="form-group">
             <label for="r-tipo">Tipo *</label>
-            <select id="r-tipo" onchange="carregarCategorias('receita', 'r-categoria', this.value)">
+            <select id="r-tipo" onchange="atualizarCategoriasReceita()">
               <option value="pessoal">Pessoal</option>
               <option value="empresarial">Empresarial</option>
               <option value="outros">Outros</option>
             </select>
           </div>
-          <div class="form-group">
+          <div class="form-group" style="position: relative;">
             <label for="r-categoria">Categoria *</label>
-            <select id="r-categoria" required></select>
+            <div style="display:flex;gap:5px;">
+              <select id="r-categoria" required style="flex:1"
+                onchange="verificarNovaCategoria(this, null, 'r-tipo', 'receita')"></select>
+            </div>
           </div>
           <div class="form-group">
             <label for="r-status">Status</label>
@@ -621,9 +636,13 @@
             <textarea id="r-obs" rows="2" placeholder="Observações adicionais..."></textarea>
           </div>
         </div>
-        <div class="form-actions">
-          <button type="button" class="btn btn-ghost" onclick="fecharModal('modal-receita')">Cancelar</button>
-          <button type="submit" class="btn btn-success">💾 Salvar Receita</button>
+        <div class="form-actions" style="justify-content: space-between; display: flex; width: 100%;">
+          <button type="button" class="btn btn-ghost" id="btn-excluir-receita" style="display:none; color: var(--red);"
+            onclick="excluirReceita(document.getElementById('r-id').value)">🗑️ Excluir</button>
+          <div style="display:flex; gap:10px; margin-left:auto">
+            <button type="button" class="btn btn-ghost" onclick="fecharModal('modal-receita')">Cancelar</button>
+            <button type="submit" class="btn btn-success" id="btn-salvar-receita">💾 Salvar Receita</button>
+          </div>
         </div>
       </form>
     </div>
@@ -680,9 +699,13 @@
             <textarea id="c-obs" rows="2" placeholder="Observações adicionais..."></textarea>
           </div>
         </div>
-        <div class="form-actions">
-          <button type="button" class="btn btn-ghost" onclick="fecharModal('modal-conta')">Cancelar</button>
-          <button type="submit" class="btn btn-primary">💾 Salvar Conta</button>
+        <div class="form-actions" style="justify-content: space-between; display: flex; width: 100%;">
+          <button type="button" class="btn btn-ghost" id="btn-excluir-conta" style="display:none; color: var(--red);"
+            onclick="excluirConta(document.getElementById('c-id').value)">🗑️ Excluir</button>
+          <div style="display:flex; gap:10px; margin-left:auto">
+            <button type="button" class="btn btn-ghost" onclick="fecharModal('modal-conta')">Cancelar</button>
+            <button type="submit" class="btn btn-primary" id="btn-salvar-conta">💾 Salvar Conta</button>
+          </div>
         </div>
       </form>
     </div>
@@ -826,7 +849,7 @@
   <!-- Toast container -->
   <div class="toast-container" id="toast-container"></div>
 
-  <script src="dashboard.js"></script>
+  <script src="dashboard.js?v=4"></script>
 </body>
 
 </html>
