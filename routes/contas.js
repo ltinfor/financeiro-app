@@ -168,26 +168,59 @@ router.put('/:id', async (req, res) => {
         // --- INTEGRAÇÃO COM RECEITAS E DESPESAS ---
         // Quando a conta for baixada (marcada como paga no atualizar), gerar no fluxo principal de Receitas ou Despesas.
         if (marcandoComoPago && contaAtualizada) {
+            let catId = contaAtualizada.categoria_id;
+
+            // Se a conta não tem categoria, buscar uma categoria padrão (Outras)
+            if (!catId) {
+                const grupoBusca = contaAtualizada.tipo_conta === 'pagar' ? 'despesa' : 'receita';
+
+                // Tenta achar 'Outras Despesas'/'Outras Receitas'
+                const { data: catFallback } = await supabase
+                    .from('categorias')
+                    .select('id')
+                    .eq('tipo', contaAtualizada.tipo)
+                    .eq('grupo', grupoBusca)
+                    .ilike('nome', 'Outras%')
+                    .limit(1)
+                    .single();
+
+                if (catFallback) {
+                    catId = catFallback.id;
+                } else {
+                    // Pega qualquer categoria válida como último recurso
+                    const { data: catAny } = await supabase
+                        .from('categorias')
+                        .select('id')
+                        .eq('tipo', contaAtualizada.tipo)
+                        .eq('grupo', grupoBusca)
+                        .limit(1)
+                        .single();
+                    if (catAny) catId = catAny.id;
+                }
+            }
+
             if (contaAtualizada.tipo_conta === 'pagar') {
-                await supabase.from('despesas').insert([{
+                const resD = await supabase.from('despesas').insert([{
                     descricao: `Ref. Conta a Pagar: ${contaAtualizada.descricao}`,
                     valor: contaAtualizada.valor,
                     data: contaAtualizada.data_pagamento || new Date().toISOString().split('T')[0],
-                    categoria_id: contaAtualizada.categoria_id,
+                    categoria_id: catId,
                     tipo: contaAtualizada.tipo,
                     status: 'pago',
                     observacoes: contaAtualizada.observacoes || 'Gerado automaticamente ao baixar conta a pagar.'
                 }]);
+                if (resD.error) console.error('Erro na integração (Despesa):', resD.error);
             } else if (contaAtualizada.tipo_conta === 'receber') {
-                await supabase.from('receitas').insert([{
+                const resR = await supabase.from('receitas').insert([{
                     descricao: `Ref. Conta a Receber: ${contaAtualizada.descricao}`,
                     valor: contaAtualizada.valor,
                     data: contaAtualizada.data_pagamento || new Date().toISOString().split('T')[0],
-                    categoria_id: contaAtualizada.categoria_id,
+                    categoria_id: catId,
                     tipo: contaAtualizada.tipo,
                     status: 'recebido',
                     observacoes: contaAtualizada.observacoes || 'Gerado automaticamente ao baixar conta a receber.'
                 }]);
+                if (resR.error) console.error('Erro na integração (Receita):', resR.error);
             }
         }
 
