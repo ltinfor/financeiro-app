@@ -112,6 +112,25 @@ app.get('/api/categorias', autenticarAPI, async (req, res) => {
     }
 });
 
+app.post('/api/categorias', autenticarAPI, async (req, res) => {
+    try {
+        const { nome, tipo, grupo, descricao } = req.body;
+        if (!nome || !tipo || !grupo) {
+            return res.status(400).json({ sucesso: false, erro: 'Nome, tipo e grupo são origatórios.' });
+        }
+
+        const { data, error } = await supabase.from('categorias')
+            .insert([{ nome, tipo, grupo, descricao: descricao || null }])
+            .select('*')
+            .single();
+
+        if (error) throw error;
+        res.status(201).json({ sucesso: true, dados: data });
+    } catch (err) {
+        res.status(500).json({ sucesso: false, erro: err.message });
+    }
+});
+
 // ============================================================
 // PÁGINAS PROTEGIDAS — exigem autenticação
 // Qualquer acesso sem JWT válido redireciona para /login

@@ -15,3 +15,5 @@
 [2026-02-25T01:32:48.614Z] LOG_TRILHA_AUDITORIA: User: Anônimo | Método: POST | Rota: /api/despesas | IP: ::1
 [2026-02-25T01:33:20.389Z] LOG_TRILHA_AUDITORIA: User: Anônimo | Método: POST | Rota: /api/despesas | IP: ::1
 [2026-02-25T01:34:08.805Z] LOG_TRILHA_AUDITORIA: User: Anônimo | Método: PUT | Rota: /api/despesas/3 | IP: ::1
+[2026-02-27T00:48:22.156Z] LOG_TRILHA_AUDITORIA: User: Anônimo | Método: PUT | Rota: /api/contas/30 | IP: ::1
+[2026-02-27T00:48:50.796Z] LOG_TRILHA_AUDITORIA: User: Anônimo | Método: PUT | Rota: /api/contas/3 | IP: ::1

@@ -645,6 +645,7 @@ async function carregarContas() {
       <td>${statusBadge(statusReal)}</td>
       <td>
         ${c.status === 'pendente' ? `<button class="btn btn-success" style="padding:5px 12px;font-size:12px" onclick="marcarPago(${c.id})">✔ Pago</button>` : '—'}
+        <button class="btn btn-ghost" style="padding:4px 10px;font-size:12px" onclick="editarConta(${c.id})">✏️ Editar</button>
       </td>
     </tr>`;
     }).join('');
@@ -875,7 +876,9 @@ function abrirModalReceita() {
 
 function abrirModalConta() {
     document.getElementById('form-conta').reset();
+    document.getElementById('c-id').value = '';
     document.getElementById('c-vencimento').value = new Date().toISOString().split('T')[0];
+    atualizarCategoriasConta();
     document.getElementById('modal-conta').classList.add('open');
 }
 
@@ -965,32 +968,115 @@ async function salvarReceita(e) {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   SALVAR — Conta
+   SALVAR E EDITAR — Conta
 ═══════════════════════════════════════════════════════════ */
 async function salvarConta(e) {
     e.preventDefault();
     try {
+        const id = document.getElementById('c-id').value;
+        const categoria_id = document.getElementById('c-categoria').value;
+
         const body = {
             descricao: document.getElementById('c-descricao').value,
             valor: document.getElementById('c-valor').value,
             vencimento: document.getElementById('c-vencimento').value,
             tipo_conta: document.getElementById('c-tipo-conta').value,
             tipo: document.getElementById('c-tipo').value,
+            categoria_id: categoria_id || null,
             observacoes: document.getElementById('c-obs').value
         };
 
-        const { sucesso, erro } = await apiFetch('/api/contas', {
-            method: 'POST', body: JSON.stringify(body)
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? `/api/contas/${id}` : '/api/contas';
+
+        const { sucesso, erro } = await apiFetch(url, {
+            method, body: JSON.stringify(body)
         });
 
         if (sucesso) {
-            toast('Conta cadastrada com sucesso!');
+            toast('Conta salva com sucesso!');
             fecharModal('modal-conta');
             carregarContas();
+            iniciarDashboard();
         } else {
             toast(erro || 'Erro ao salvar conta.', 'error');
         }
     } catch { toast('Erro de conexão.', 'error'); }
+}
+
+async function editarConta(id) {
+    try {
+        const { dados, sucesso } = await apiFetch(`/api/contas/${id}`);
+        if (!sucesso || !dados) return toast('Erro ao carregar conta.', 'error');
+
+        document.getElementById('c-id').value = dados.id;
+        document.getElementById('c-descricao').value = dados.descricao;
+        document.getElementById('c-valor').value = dados.valor;
+        document.getElementById('c-vencimento').value = dados.vencimento;
+        document.getElementById('c-tipo-conta').value = dados.tipo_conta;
+        document.getElementById('c-tipo').value = dados.tipo;
+        document.getElementById('c-obs').value = dados.observacoes || '';
+
+        // Carrega categorias baseado no combobox atual
+        await atualizarCategoriasConta();
+        // E só então seta o valor da categoria
+        if (dados.categoria_id) {
+            document.getElementById('c-categoria').value = dados.categoria_id;
+        }
+
+        document.getElementById('modal-conta').classList.add('open');
+    } catch {
+        toast('Erro de conexão.', 'error');
+    }
+}
+
+async function atualizarCategoriasConta() {
+    const tipoConta = document.getElementById('c-tipo-conta').value;     // pagar | receber
+    const tipoOrigem = document.getElementById('c-tipo').value;          // pessoal | empresarial
+
+    const grupo = tipoConta === 'pagar' ? 'despesa' : 'receita';
+
+    await carregarCategorias(grupo, 'c-categoria', tipoOrigem);
+
+    // Injetar opção "+ Nova Categoria" no select
+    const selectCat = document.getElementById('c-categoria');
+    if (selectCat) {
+        selectCat.innerHTML += `<option style="font-weight:bold;color:var(--green)" value="nova">+ Criar Nova Categoria</option>`;
+    }
+}
+
+async function verificarNovaCategoria(selectObj, idTipoConta, idTipo) {
+    if (selectObj.value === 'nova') {
+        const nome = prompt('Digite o nome da nova categoria:');
+        if (!nome) {
+            // Reverte a seleção para vazia e evita salvar nada se usuário cancelar
+            selectObj.value = '';
+            return;
+        }
+
+        const tipoConta = document.getElementById(idTipoConta).value;
+        const tipoOrigem = document.getElementById(idTipo).value;
+        const grupo = tipoConta === 'pagar' ? 'despesa' : 'receita';
+
+        try {
+            const { sucesso, dados, erro } = await apiFetch(`/api/categorias`, {
+                method: 'POST', body: JSON.stringify({ nome, tipo: tipoOrigem, grupo })
+            });
+
+            if (sucesso && dados) {
+                toast(`Categoria "${nome}" criada!`);
+                await atualizarCategoriasConta();
+                // Seleciona a nova
+                selectObj.value = dados.id;
+            } else {
+                toast(erro || 'Erro ao criar.', 'error');
+                selectObj.value = '';
+            }
+        } catch (e) {
+            toast('Erro de conexão', 'error');
+            selectObj.value = '';
+        }
+    }
 }
 
 /* ═══════════════════════════════════════════════════════════
