@@ -54,7 +54,15 @@ router.get('/dre', async (req, res) => {
             .order('mes', { ascending: false });
 
         if (tipo) query = query.eq('tipo', tipo);
-        if (mes) query = query.gte('mes', `${mes}-01`).lt('mes', new Date(mes + '-01').setMonth(new Date(mes + '-01').getMonth() + 1));
+        if (mes) {
+            const [anoStr, mesStr] = mes.split('-');
+            const prevAno = parseInt(anoStr, 10);
+            const prevMes = parseInt(mesStr, 10);
+            const nextMes = prevMes === 12 ? 1 : prevMes + 1;
+            const nextAno = prevMes === 12 ? prevAno + 1 : prevAno;
+            const fimMesStr = `${nextAno}-${String(nextMes).padStart(2, '0')}-01`;
+            query = query.gte('mes', `${mes}-01`).lt('mes', fimMesStr);
+        }
         if (ano) {
             query = query
                 .gte('mes', `${ano}-01-01`)
@@ -101,9 +109,12 @@ router.get('/dashboard', async (req, res) => {
     try {
         const mesAtual = new Date().toISOString().substring(0, 7); // YYYY-MM
         const inicioMes = `${mesAtual}-01`;
-        const fimMes = new Date(mesAtual + '-01');
-        fimMes.setMonth(fimMes.getMonth() + 1);
-        const fimMesStr = fimMes.toISOString().split('T')[0];
+        const [anoStr, mesStr] = mesAtual.split('-');
+        const prevAno = parseInt(anoStr, 10);
+        const prevMes = parseInt(mesStr, 10);
+        const nextMes = prevMes === 12 ? 1 : prevMes + 1;
+        const nextAno = prevMes === 12 ? prevAno + 1 : prevAno;
+        const fimMesStr = `${nextAno}-${String(nextMes).padStart(2, '0')}-01`;
 
         // Buscar receitas, despesas e contas em paralelo
         const [{ data: receitas }, { data: despesas }, { data: contas }] = await Promise.all([

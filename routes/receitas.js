@@ -26,10 +26,14 @@ router.get('/', async (req, res) => {
         if (inicio && fim) {
             query = query.gte('data', inicio).lte('data', fim);
         } else if (mes) {
+            const [anoStr, mesStr] = mes.split('-');
+            const prevAno = parseInt(anoStr, 10);
+            const prevMes = parseInt(mesStr, 10);
+            const nextMes = prevMes === 12 ? 1 : prevMes + 1;
+            const nextAno = prevMes === 12 ? prevAno + 1 : prevAno;
             const inicioMes = `${mes}-01`;
-            const fimMes = new Date(mes + '-01');
-            fimMes.setMonth(fimMes.getMonth() + 1);
-            query = query.gte('data', inicioMes).lt('data', fimMes.toISOString().split('T')[0]);
+            const fimMesStr = `${nextAno}-${String(nextMes).padStart(2, '0')}-01`;
+            query = query.gte('data', inicioMes).lt('data', fimMesStr);
         }
 
         const { data, error } = await query;
