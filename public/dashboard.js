@@ -1201,29 +1201,31 @@ async function editarReceita(id) {
 }
 
 async function excluirDespesa(id) {
+    if (!id || id === '') return toast('Erro: ID da despesa não encontrado.', 'error');
     if (!confirm('Tem certeza que deseja excluir esta despesa?')) return;
     try {
         const { sucesso, erro } = await apiFetch(`/api/despesas/${id}`, { method: 'DELETE' });
         if (sucesso) {
-            toast('Despesa excluída!');
+            toast('Despesa excluída com sucesso!');
             fecharModal('modal-despesa');
             carregarDespesas();
             iniciarDashboard();
-        } else { toast(erro || 'Erro ao excluir.', 'error'); }
-    } catch { toast('Erro de conexão.', 'error'); }
+        } else { toast(erro || 'Erro ao excluir despesa.', 'error'); }
+    } catch { toast('Erro de conexão ao excluir despesa.', 'error'); }
 }
 
 async function excluirReceita(id) {
+    if (!id || id === '') return toast('Erro: ID da receita não encontrado.', 'error');
     if (!confirm('Tem certeza que deseja excluir esta receita?')) return;
     try {
         const { sucesso, erro } = await apiFetch(`/api/receitas/${id}`, { method: 'DELETE' });
         if (sucesso) {
-            toast('Receita excluída!');
+            toast('Receita excluída com sucesso!');
             fecharModal('modal-receita');
             carregarReceitas();
             iniciarDashboard();
-        } else { toast(erro || 'Erro ao excluir.', 'error'); }
-    } catch { toast('Erro de conexão.', 'error'); }
+        } else { toast(erro || 'Erro ao excluir receita.', 'error'); }
+    } catch { toast('Erro de conexão ao excluir receita.', 'error'); }
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -1298,6 +1300,7 @@ async function editarConta(id) {
 }
 
 async function excluirConta(id) {
+    if (!id || id === '') return toast('Erro: ID da conta não encontrado.', 'error');
     if (!confirm('Tem certeza que deseja excluir esta conta?')) return;
     try {
         const { sucesso, erro } = await apiFetch(`/api/contas/${id}`, { method: 'DELETE' });
@@ -1307,10 +1310,10 @@ async function excluirConta(id) {
             carregarContas();
             iniciarDashboard();
         } else {
-            toast(erro || 'Erro ao excluir.', 'error');
+            toast(erro || 'Erro ao excluir conta.', 'error');
         }
     } catch {
-        toast('Erro de conexão.', 'error');
+        toast('Erro de conexão ao excluir conta.', 'error');
     }
 }
 
