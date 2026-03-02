@@ -64,6 +64,16 @@
         <button class="nav-item" id="btn-backup" onclick="exportarBackupApp()">
           <span class="icon">💾</span> Backup do Sistema
         </button>
+        <button class="nav-item" id="btn-restaurar" onclick="document.getElementById('input-restore-backup').click()">
+          <span class="icon">🔄</span> Restaurar Backup
+        </button>
+        <input type="file" id="input-restore-backup" style="display:none" accept=".json"
+          onchange="restaurarBackupApp(event)" />
+
+        <div class="nav-group-label" style="margin-top:20px;">Sistema</div>
+        <button class="nav-item" data-page="usuarios" onclick="navegarPara('usuarios', this)">
+          <span class="icon">🛡️</span> Usuários
+        </button>
       </nav>
 
       <div class="sidebar-footer">
@@ -94,6 +104,10 @@
           </div>
         </div>
         <div class="header-actions">
+          <button id="btn-calc-toggle"
+            style="background:transparent; border:none; font-size:20px; color:var(--text-muted); padding:4px; margin-right:5px"
+            onclick="toggleCalculadora()" title="Calculadora">🧮</button>
+
           <button id="btn-theme-toggle"
             style="background:transparent; border:none; font-size:20px; color:var(--text-muted); padding:4px"
             onclick="toggleTheme()" title="Mudar Tema">🌙</button>
@@ -228,7 +242,11 @@
       <section class="page" id="page-receitas">
         <div class="card">
           <div class="card-header" style="flex-wrap: wrap; gap:10px">
-            <div class="card-title">Receitas</div>
+            <div>
+              <div class="card-title">Receitas</div>
+              <div class="card-sub" style="color:var(--green); font-weight: 600" id="total-receitas-listagem">Total: R$
+                0,00</div>
+            </div>
             <div style="display:flex; gap:10px; align-items:center;">
               <input type="date" id="filtro-r-inicio" style="padding:6px 10px; font-size:12px" title="Data Inicial" />
               <span style="font-size:12px;color:var(--text-muted)">até</span>
@@ -270,7 +288,11 @@
       <section class="page" id="page-despesas">
         <div class="card">
           <div class="card-header" style="flex-wrap: wrap; gap:10px">
-            <div class="card-title">Despesas</div>
+            <div>
+              <div class="card-title">Despesas</div>
+              <div class="card-sub" style="color:var(--red); font-weight: 600" id="total-despesas-listagem">Total: R$
+                0,00</div>
+            </div>
             <div style="display:flex; gap:10px; align-items:center;">
               <input type="date" id="filtro-d-inicio" style="padding:6px 10px; font-size:12px" title="Data Inicial" />
               <span style="font-size:12px;color:var(--text-muted)">até</span>
@@ -511,6 +533,40 @@
         </div>
       </section>
 
+      <!-- ─────────────────────────────────────────
+         PÁGINA: USUÁRIOS
+      ───────────────────────────────────────── -->
+      <section class="page" id="page-usuarios">
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Usuários do Sistema</div>
+              <div class="card-sub">Gerenciar acessos e criar novos usuários</div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center">
+              <button class="btn btn-primary" onclick="abrirModalUsuario()">+ Novo Usuário</button>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Nome</th>
+                  <th>E-mail</th>
+                  <th>Status</th>
+                  <th>Último Login</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tabela-usuarios">
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
     </div><!-- /main -->
   </div><!-- /app-layout -->
 
@@ -712,6 +768,50 @@
   </div>
 
   <!-- ══════════════════════════════════════════
+     MODAL: NOVO USUÁRIO
+══════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-usuario">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title" id="modal-usuario-titulo">➕ Novo Usuário</span>
+        <button class="btn-close" onclick="fecharModal('modal-usuario')">✕</button>
+      </div>
+      <form id="form-usuario" onsubmit="salvarUsuario(event)">
+        <input type="hidden" id="u-id" value="" />
+        <div class="form-grid">
+          <div class="form-group full">
+            <label for="u-nome">Nome *</label>
+            <input type="text" id="u-nome" required />
+          </div>
+          <div class="form-group full">
+            <label for="u-email">E-mail *</label>
+            <input type="email" id="u-email" required />
+          </div>
+          <div class="form-group full">
+            <label for="u-senha">Senha <span id="u-senha-req">*</span></label>
+            <input type="password" id="u-senha" placeholder="Apenas se for alterar/nova" />
+          </div>
+          <div class="form-group">
+            <label for="u-ativo">Status</label>
+            <select id="u-ativo">
+              <option value="true">Ativo</option>
+              <option value="false">Inativo</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-actions" style="justify-content: space-between; display: flex; width: 100%;">
+          <button type="button" class="btn btn-ghost" id="btn-excluir-usuario" style="display:none; color: var(--red);"
+            onclick="excluirUsuario(document.getElementById('u-id').value)">🗑️ Excluir</button>
+          <div style="display:flex; gap:10px; margin-left:auto">
+            <button type="button" class="btn btn-ghost" onclick="fecharModal('modal-usuario')">Cancelar</button>
+            <button type="submit" class="btn btn-primary" id="btn-salvar-usuario">💾 Salvar Usuário</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
      MODAL: CLIENTE (Novo / Editar)
 ══════════════════════════════════════════ -->
   <div class="modal-overlay" id="modal-cliente">
@@ -845,6 +945,157 @@
       </form>
     </div>
   </div>
+
+  <!-- Calculadora Widget -->
+  <div id="calculadora-widget"
+    style="display:none; position:fixed; bottom:30px; right:30px; box-shadow:0 12px 30px rgba(0,0,0,0.5); border-radius:18px; background:var(--bg-secondary); border:1px solid var(--border); width:260px; z-index:9999; flex-direction:column; overflow:hidden;">
+    <div
+      style="background:var(--bg-primary); padding:10px 15px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); cursor:grab"
+      id="calc-header">
+      <strong style="font-size:13px; color:var(--text-main)"><span
+          style="margin-right:6px">🧮</span>Calculadora</strong>
+      <button onclick="toggleCalculadora()"
+        style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; font-size:16px;">&times;</button>
+    </div>
+    <div style="padding:15px; display:flex; flex-direction:column; gap:10px;">
+      <input type="text" id="calc-display" disabled
+        style="width:100%; box-sizing:border-box; background:var(--bg-primary); border:none; border-radius:8px; padding:15px; font-size:24px; text-align:right; color:var(--text-main); font-weight:700; font-family:monospace;"
+        value="0" />
+      <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:8px;">
+        <button class="calc-btn op" onclick="calcAction('C')"
+          style="grid-column: span 2; background:var(--red-dim); color:var(--red)">C</button>
+        <button class="calc-btn op" onclick="calcAction('%')">%</button>
+        <button class="calc-btn op" onclick="calcAction('/')">÷</button>
+
+        <button class="calc-btn" onclick="calcAction('7')">7</button>
+        <button class="calc-btn" onclick="calcAction('8')">8</button>
+        <button class="calc-btn" onclick="calcAction('9')">9</button>
+        <button class="calc-btn op" onclick="calcAction('*')">×</button>
+
+        <button class="calc-btn" onclick="calcAction('4')">4</button>
+        <button class="calc-btn" onclick="calcAction('5')">5</button>
+        <button class="calc-btn" onclick="calcAction('6')">6</button>
+        <button class="calc-btn op" onclick="calcAction('-')">−</button>
+
+        <button class="calc-btn" onclick="calcAction('1')">1</button>
+        <button class="calc-btn" onclick="calcAction('2')">2</button>
+        <button class="calc-btn" onclick="calcAction('3')">3</button>
+        <button class="calc-btn op" onclick="calcAction('+')">+</button>
+
+        <button class="calc-btn" onclick="calcAction('0')" style="grid-column: span 2">0</button>
+        <button class="calc-btn" onclick="calcAction('.')">.</button>
+        <button class="calc-btn" onclick="calcAction('=')" style="background:var(--blue); color:#fff">=</button>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .calc-btn {
+      background: var(--bg-primary);
+      color: var(--text-main);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 0;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .calc-btn:hover {
+      background: var(--bg-hover);
+      border-color: rgba(255, 255, 255, 0.2)
+    }
+
+    .calc-btn:active {
+      transform: scale(0.92);
+    }
+
+    .calc-btn.op {
+      background: rgba(56, 189, 248, 0.1);
+      color: var(--blue);
+      border-color: transparent
+    }
+
+    .calc-btn.op:hover {
+      background: rgba(56, 189, 248, 0.2);
+    }
+  </style>
+
+  <script>
+    let calcVal = '0';
+    let calcMem = 0;
+    let calcOp = null;
+    let recCalc = false; // "recent calc" flag
+
+    function toggleCalculadora() {
+      const widget = document.getElementById('calculadora-widget');
+      widget.style.display = widget.style.display === 'none' ? 'flex' : 'none';
+    }
+
+    function calcAction(val) {
+      const display = document.getElementById('calc-display');
+
+      if (val === 'C') {
+        calcVal = '0'; calcMem = 0; calcOp = null; display.value = calcVal; return;
+      }
+
+      if (val === '=') {
+        if (!calcOp) return;
+        let v2 = parseFloat(calcVal);
+        let res = 0;
+        if (calcOp === '+') res = calcMem + v2;
+        if (calcOp === '-') res = calcMem - v2;
+        if (calcOp === '*') res = calcMem * v2;
+        if (calcOp === '/') res = calcMem / (v2 === 0 ? 1 : v2);
+
+        calcVal = String(Math.round(res * 10000) / 10000);
+        display.value = calcVal;
+        calcOp = null;
+        recCalc = true;
+        return;
+      }
+
+      if (['+', '-', '*', '/', '%'].includes(val)) {
+        if (val === '%') {
+          calcVal = String(parseFloat(calcVal) / 100);
+          display.value = calcVal;
+        } else {
+          calcMem = parseFloat(calcVal);
+          calcOp = val;
+          recCalc = true;
+        }
+        return;
+      }
+
+      if (recCalc) { calcVal = '0'; recCalc = false; }
+
+      if (val === '.' && calcVal.includes('.')) return;
+
+      calcVal = calcVal === '0' && val !== '.' ? val : calcVal + val;
+      display.value = calcVal;
+    }
+
+    // Drag header logic
+    const calcHeader = document.getElementById('calc-header');
+    const calcWidget = document.getElementById('calculadora-widget');
+    let isDragging = false, dragX = 0, dragY = 0;
+
+    calcHeader.onmousedown = (e) => {
+      isDragging = true;
+      const rect = calcWidget.getBoundingClientRect();
+      dragX = e.clientX - rect.left;
+      dragY = e.clientY - rect.top;
+    };
+    window.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      calcWidget.style.right = 'auto';
+      calcWidget.style.bottom = 'auto';
+      calcWidget.style.left = (e.clientX - dragX) + 'px';
+      calcWidget.style.top = (e.clientY - dragY) + 'px';
+    });
+    window.addEventListener('mouseup', () => isDragging = false);
+  </script>
 
   <!-- Toast container -->
   <div class="toast-container" id="toast-container"></div>

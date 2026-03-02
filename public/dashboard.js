@@ -98,6 +98,7 @@ const titulos = {
     contas: ['Contas a Pagar/Receber', 'Controle de vencimentos'],
     fluxo: ['Fluxo de Caixa', 'Saldo acumulado por período'],
     dre: ['DRE Simplificado', 'Lucro/Prejuízo por categoria'],
+    usuarios: ['Usuários', 'Gerenciar acessos do sistema']
 };
 
 function toggleSidebar() {
@@ -133,7 +134,8 @@ function navegarPara(pagina, el) {
         clientes: carregarClientes,
         contas: carregarContas,
         fluxo: carregarFluxo,
-        dre: carregarDRE
+        dre: carregarDRE,
+        usuarios: carregarUsuarios
     };
     carregadores[pagina]?.();
 }
@@ -240,7 +242,7 @@ function toast(msg, tipo = 'success') {
     const container = document.getElementById('toast-container');
     const el = document.createElement('div');
     el.className = `toast ${tipo}`;
-    el.innerHTML = `<span>${tipo === 'success' ? '✅' : '❌'}</span> ${msg}`;
+    el.innerHTML = `<span>${tipo === 'success' ? '✅' : '❌'}</span>${msg}`;
     container.appendChild(el);
     setTimeout(() => el.remove(), 3500);
 }
@@ -289,9 +291,19 @@ async function iniciarDashboard() {
         document.getElementById('kpi-despesas-sub').textContent =
             `${fmt(dados.despesas.pago)} pago · ${fmt(dados.despesas.pendente)} pendente`;
 
-        const saldo = parseFloat(dados.receitas.recebido) - parseFloat(dados.despesas.pago);
-        kpiSaldo.textContent = fmt(saldo);
-        corSaldo(saldo, kpiSaldo);
+        const saldoAnterior = parseFloat(dados.saldo_anterior || 0);
+        const resultadoMes = parseFloat(dados.receitas.recebido) - parseFloat(dados.despesas.pago);
+        const saldoAtual = saldoAnterior + resultadoMes;
+
+        kpiSaldo.textContent = fmt(saldoAtual);
+        corSaldo(saldoAtual, kpiSaldo);
+
+        const subLabel = document.getElementById('kpi-saldo-sub');
+        if (subLabel) {
+            subLabel.innerHTML = `<span style="${resultadoMes >= 0 ? 'color:var(--green)' : 'color:var(--red)'}">Mês: ${fmt(resultadoMes)}</span>• Ant: ${fmt(saldoAnterior)}`;
+        }
+        const kpiLabel = kpiSaldo.previousElementSibling?.querySelector('.kpi-label');
+        if (kpiLabel) kpiLabel.textContent = 'Saldo Banco (Atual)';
 
         kpiContas.textContent = fmt(parseFloat(dados.contas.a_pagar) + parseFloat(dados.contas.a_receber));
         document.getElementById('kpi-contas-sub').textContent =
@@ -354,7 +366,7 @@ async function renderizarGraficoBarras() {
                 legend: { labels: { color: '#94a3b8', font: { size: 12 } } },
                 tooltip: {
                     callbacks: {
-                        label: ctx => ` ${ctx.dataset.label}: ${fmt(ctx.raw)}`
+                        label: ctx => `${ctx.dataset.label}: ${fmt(ctx.raw)}`
                     }
                 }
             },
@@ -412,7 +424,7 @@ async function renderizarGraficoRosca() {
                     labels: { color: '#94a3b8', font: { size: 11 }, padding: 16, boxWidth: 12 }
                 },
                 tooltip: {
-                    callbacks: { label: ctx => ` ${ctx.label}: ${fmt(ctx.raw)}` }
+                    callbacks: { label: ctx => `${ctx.label}: ${fmt(ctx.raw)}` }
                 }
             }
         }
@@ -428,7 +440,7 @@ async function carregarUltimasTransacoes() {
     ]);
 
     const todas = [
-        ...(receitas || []).map(r => ({ ...r, _grupo: 'receita' })),
+        ...(receitas || []).filter(r => !r._isSaldoAnterior).map(r => ({ ...r, _grupo: 'receita' })),
         ...(despesas || []).map(d => ({ ...d, _grupo: 'despesa' }))
     ].sort((a, b) => new Date(b.data) - new Date(a.data)).slice(0, 10);
 
@@ -438,7 +450,7 @@ async function carregarUltimasTransacoes() {
     }
 
     tbody.innerHTML = todas.map(t => `
-    <tr>
+                <tr>
       <td>${fmtData(t.data)}</td>
       <td>${t.descricao}</td>
       <td>${t.categorias?.nome || '—'}</td>
@@ -451,7 +463,33 @@ async function carregarUltimasTransacoes() {
         <button class="btn btn-ghost" style="padding:4px 10px;font-size:12px" onclick="${t._grupo === 'receita' ? `editarReceita(${t.id})` : `editarDespesa(${t.id})`}">✏️ Editar</button>
       </td>
     </tr>
-  `).join('');
+              `).join('');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PÁGINA: RECEITAS
+    ].sort((a, b) => new Date(b.data) - new Date(a.data)).slice(0, 10);
+
+    if (todas.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="icon">📭</div><p>Nenhuma transação encontrada</p></div></td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = todas.map(t => `
+                <tr>
+      <td>${fmtData(t.data)}</td>
+      <td>${t.descricao}</td>
+      <td>${t.categorias?.nome || '—'}</td>
+      <td>${tipoBadge(t.tipo)}</td>
+      <td style="color:${t._grupo === 'receita' ?'var(--green)' : 'var(--red)'}; font-weight:600">
+        ${t._grupo === 'receita' ?'+' : '-'}${fmt(t.valor)}
+      </td>
+      <td>${statusBadge(t.status)}</td>
+      <td>
+        <button class="btn btn-ghost" style="padding:4px 10px;font-size:12px" onclick="${t._grupo === 'receita' ?`editarReceita(${t.id})`:`editarDespesa(${t.id})`}">✏️ Editar</button>
+      </td>
+    </tr>
+              `).join('');
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -471,12 +509,16 @@ async function carregarReceitas() {
     const { dados } = await apiFetch(`/api/receitas${tipoParam.replace('?&', '?')}`);
 
     if (!dados || dados.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="icon">📈</div><p>Nenhuma receita cadastrada</p></div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="icon">📈</div><p>Nenhuma receita cadastrada</p></div></td></tr>`;
+        document.getElementById('total-receitas-listagem').textContent = 'Total: R$ 0,00';
         return;
     }
 
+    const totalReceitas = dados.reduce((acc, r) => acc + parseFloat(r.valor || 0), 0);
+    document.getElementById('total-receitas-listagem').textContent = `Total: ${fmt(totalReceitas)}`;
+
     tbody.innerHTML = dados.map(r => `
-    <tr>
+                <tr>
       <td>${fmtData(r.data)}</td>
       <td>${r.descricao}</td>
       <td>${r.categorias?.nome || '—'}</td>
@@ -484,11 +526,11 @@ async function carregarReceitas() {
       <td style="color:var(--green);font-weight:600">${fmt(r.valor)}</td>
       <td>${statusBadge(r.status)}</td>
       <td style="display: flex; gap: 5px;">
-        <button class="btn btn-ghost" style="padding:4px 10px;font-size:12px" onclick="editarReceita(${r.id})">✏️ Editar</button>
-        <button class="btn btn-ghost" style="padding:4px 10px;font-size:12px;color:var(--red)" onclick="excluirReceita(${r.id})">🗑️ Excluir</button>
+        ${!r._isSaldoAnterior ? `<button class="btn btn-ghost" style="padding:4px 10px;font-size:12px" onclick="editarReceita(${r.id})">✏️ Editar</button>
+        <button class="btn btn-ghost" style="padding:4px 10px;font-size:12px;color:var(--red)" onclick="excluirReceita(${r.id})">🗑️ Excluir</button>` : `<span style="margin:auto;font-size:12px;color:var(--text-muted);font-weight:600;padding:4px;">✨ Repasse Automático</span>`}
       </td>
     </tr>
-  `).join('');
+              `).join('');
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -507,9 +549,13 @@ async function carregarDespesas() {
     const { dados } = await apiFetch(`/api/despesas${tipoParam.replace('?&', '?')}`);
 
     if (!dados || dados.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="icon">📉</div><p>Nenhuma despesa cadastrada</p></div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="icon">📉</div><p>Nenhuma despesa cadastrada</p></div></td></tr>`;
+        document.getElementById('total-despesas-listagem').textContent = 'Total: R$ 0,00';
         return;
     }
+
+    const totalDespesas = dados.reduce((acc, d) => acc + parseFloat(d.valor || 0), 0);
+    document.getElementById('total-despesas-listagem').textContent = `Total: ${fmt(totalDespesas)}`;
 
     tbody.innerHTML = dados.map(d => `
     <tr>
@@ -525,7 +571,7 @@ async function carregarDespesas() {
         <button class="btn btn-ghost" style="padding:4px 10px;font-size:12px;color:var(--red)" onclick="excluirDespesa(${d.id})">🗑️ Excluir</button>
       </td>
     </tr>
-  `).join('');
+       `).join('');
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -552,7 +598,7 @@ async function verificarAlertasContas() {
         }
 
         // Toasts de alerta
-        atrasadas.forEach(c => toast(`🚨 ATRASADO: ${c.descricao} (${fmt(c.valor)})`, 'error'));
+        atrasadas.forEach(c => toast(`🚨 ATRASADO: ${c.descricao}(${fmt(c.valor)})`, 'error'));
         vencemHoje.forEach(c => {
             const tipo = c.tipo_conta === 'pagar' ? '💸 PAGAR' : '💰 RECEBER';
             toast(`⚠️ HOJE: ${tipo} — ${c.descricao} (${fmt(c.valor)})`, 'error');
@@ -568,7 +614,7 @@ async function verificarAlertasContas() {
    PÁGINA: CONTAS
 ═══════════════════════════════════════════════════════════ */
 async function carregarContas() {
-    let tipoParam = state.tipo !== 'todos' ? `?tipo=${state.tipo}` : '?';
+    let tipoParam = state.tipo !== 'todos' ? `?tipo =${state.tipo}` : '?';
     const dtInicio = document.getElementById('filtro-c-inicio')?.value;
     const dtFim = document.getElementById('filtro-c-fim')?.value;
 
@@ -602,23 +648,25 @@ async function carregarContas() {
     if (bannerEl) {
         let html = '';
         if (alertasHoje.length > 0) {
-            html += `<div style="background:rgba(244,63,94,0.12);border:1px solid rgba(244,63,94,0.3);border-radius:10px;padding:12px 16px;margin-bottom:10px">
-              <div style="font-weight:700;color:var(--red);margin-bottom:8px;font-size:13px">⚠️ VENCE HOJE</div>
+            html += `<div style = "background:rgba(244,63,94,0.12);border:1px solid rgba(244,63,94,0.3);border-radius:10px;padding:12px 16px;margin-bottom:10px">
+    <div style="font-weight:700;color:var(--red);margin-bottom:8px;font-size:13px">⚠️ VENCE HOJE</div>
               ${alertasHoje.map(c => `
                 <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(244,63,94,0.1);font-size:13px">
                   <span>${c.tipo_conta === 'pagar' ? '💸' : '💰'} <strong>${c.descricao}</strong></span>
                   <span style="color:var(--red);font-weight:700">${fmt(c.valor)}</span>
-                </div>`).join('')}
+                </div>`).join('')
+                }
             </div>`;
         }
         if (alertasAmanha.length > 0) {
-            html += `<div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:10px;padding:12px 16px;margin-bottom:10px">
-              <div style="font-weight:700;color:#f59e0b;margin-bottom:8px;font-size:13px">🔔 VENCE AMANHÃ</div>
+            html += `<div style = "background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:10px;padding:12px 16px;margin-bottom:10px">
+    <div style="font-weight:700;color:#f59e0b;margin-bottom:8px;font-size:13px">🔔 VENCE AMANHÃ</div>
               ${alertasAmanha.map(c => `
                 <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(245,158,11,0.1);font-size:13px">
                   <span>${c.tipo_conta === 'pagar' ? '💸' : '💰'} <strong>${c.descricao}</strong></span>
                   <span style="color:#f59e0b;font-weight:700">${fmt(c.valor)}</span>
-                </div>`).join('')}
+                </div>`).join('')
+                }
             </div>`;
         }
         bannerEl.innerHTML = html;
@@ -643,7 +691,7 @@ async function carregarContas() {
         if (atrasado) alertaIcon = ' <span title="Atrasado" style="color:var(--red)">🚨</span>';
 
         return `
-    <tr style="${venceHoje ? 'background:rgba(244,63,94,0.05)' : venceAmanha ? 'background:rgba(245,158,11,0.05)' : ''}">
+    < tr style = "${venceHoje ? 'background:rgba(244,63,94,0.05)' : venceAmanha ? 'background:rgba(245,158,11,0.05)' : ''}">
       <td>
         ${c.status === 'pendente' ? `<input type="checkbox" class="chk-conta" value="${c.id}" onchange="verificarCheckboxContas()" />` : ''}
       </td>
@@ -758,7 +806,7 @@ async function carregarFluxo() {
             responsive: true, maintainAspectRatio: false,
             plugins: {
                 legend: { labels: { color: '#94a3b8', font: { size: 12 } } },
-                tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${fmt(ctx.raw)}` } }
+                tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${fmt(ctx.raw)}` } }
             },
             scales: {
                 x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(255,255,255,0.04)' } },
@@ -800,6 +848,40 @@ function exportarBackupApp() {
     window.open(`/api/relatorios/backup`, '_blank');
 }
 
+async function restaurarBackupApp(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!confirm('Atenção: Restaurar um backup irá substituir ou adicionar dados atuais. Essa ação é muito arriscada. Recomenda-se realizar o backup dos dados atuais antes. Deseja prosseguir?')) {
+        e.target.value = '';
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    toast('Restaurando backup, por favor aguarde...', 'info');
+
+    try {
+        const response = await fetch('/api/relatorios/restaurar', {
+            method: 'POST',
+            body: formData,
+            credentials: 'include'
+        });
+        const r = await response.json();
+
+        if (r.sucesso) {
+            toast('Backup restaurado com sucesso!');
+            setTimeout(() => window.location.reload(), 2000);
+        } else {
+            toast(r.erro || 'Erro ao restaurar backup.', 'error');
+        }
+    } catch {
+        toast('Erro de conexão ao restaurar.', 'error');
+    }
+    e.target.value = '';
+}
+
 
 /* ═══════════════════════════════════════════════════════════
    PÁGINA: DRE
@@ -817,7 +899,7 @@ async function carregarDRE() {
     container.innerHTML = dados.map(d => {
         const resultado = d.resultado;
         return `
-    <div style="margin-bottom:24px;padding:20px;background:var(--bg-primary);border-radius:10px;border:1px solid var(--border)">
+    <div style = "margin-bottom:24px;padding:20px;background:var(--bg-primary);border-radius:10px;border:1px solid var(--border)">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
         <div>
           <strong>${new Date(d.mes + '-01').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</strong>
@@ -835,7 +917,7 @@ async function carregarDRE() {
               <span>${r.categoria}</span>
               <span style="color:var(--green)">${fmt(r.valor)}</span>
             </div>
-          `).join('')}
+         `).join('')}
         </div>
         <div>
           <div style="font-size:12px;color:var(--text-muted);font-weight:600;margin-bottom:8px">DESPESAS — ${fmt(d.total_despesas)}</div>
@@ -844,7 +926,7 @@ async function carregarDRE() {
               <span>${r.categoria}</span>
               <span style="color:var(--red)">${fmt(r.valor)}</span>
             </div>
-          `).join('')}
+         `).join('')}
         </div>
       </div>
     </div>`;
@@ -862,10 +944,62 @@ async function carregarCategorias(grupo, selectId, tipo) {
     try {
         const { dados } = await apiFetch(`/api/categorias?grupo=${grupo}&tipo=${tipo}`);
         select.innerHTML = dados?.length
-            ? dados.map(c => `<option value="${c.id}">${c.nome}</option>`).join('')
+            ? dados.map(c => `<option value = "${c.id}">${c.nome}</option>`).join('')
             : '<option value="">Nenhuma categoria</option>';
     } catch {
         select.innerHTML = '<option value="">Erro ao carregar</option>';
+    }
+}
+
+function atualizarCategoriasDespesa() {
+    const tipo = document.getElementById('d-tipo').value;
+    carregarCategorias('despesa', 'd-categoria', tipo);
+}
+
+function atualizarCategoriasReceita() {
+    const tipo = document.getElementById('r-tipo').value;
+    carregarCategorias('receita', 'r-categoria', tipo);
+}
+
+function atualizarCategoriasConta() {
+    const tipo_conta = document.getElementById('c-tipo-conta').value;
+    const tipo = document.getElementById('c-tipo').value;
+    carregarCategorias(tipo_conta === 'pagar' ? 'despesa' : 'receita', 'c-categoria', tipo);
+}
+
+async function verificarNovaCategoria(selectEl, selectTipoContaId, selectOrigemId, defaultGrupo) {
+    if (selectEl.value === 'nova') {
+        const nome = prompt('Digite o nome da nova categoria:');
+        if (!nome) {
+            selectEl.selectedIndex = 0;
+            return;
+        }
+
+        let grupo = defaultGrupo;
+        let tipo = document.getElementById(selectOrigemId || selectTipoContaId).value;
+
+        if (selectTipoContaId && !defaultGrupo) {
+            const tipoConta = document.getElementById(selectTipoContaId).value;
+            grupo = tipoConta === 'pagar' ? 'despesa' : 'receita';
+        }
+
+        try {
+            const { dados } = await apiFetch('/api/categorias', {
+                method: 'POST',
+                body: JSON.stringify({ nome, grupo, tipo })
+            });
+            if (dados) {
+                toast('Categoria criada com sucesso!');
+                if (grupo === 'despesa' && !selectTipoContaId) atualizarCategoriasDespesa();
+                else if (grupo === 'receita' && !selectTipoContaId) atualizarCategoriasReceita();
+                else atualizarCategoriasConta();
+
+                setTimeout(() => selectEl.value = dados[0].id, 300);
+            }
+        } catch {
+            toast('Erro ao criar categoria.', 'error');
+            selectEl.selectedIndex = 0;
+        }
     }
 }
 
@@ -903,12 +1037,12 @@ function fecharModal(id) {
     document.getElementById(id).classList.remove('open');
 }
 
-// Fechar modal clicando fora
-document.querySelectorAll('.modal-overlay').forEach(overlay => {
-    overlay.addEventListener('click', e => {
-        if (e.target === overlay) overlay.classList.remove('open');
-    });
-});
+// Fechar modal clicando fora foi desativado para evitar fechamento acidental ao preencher os campos.
+// document.querySelectorAll('.modal-overlay').forEach(overlay => {
+//     overlay.addEventListener('click', e => {
+//         if (e.target === overlay) overlay.classList.remove('open');
+//    });
+//});
 
 /* ═══════════════════════════════════════════════════════════
    SALVAR — Despesa
@@ -1191,7 +1325,7 @@ async function atualizarCategoriasConta() {
     // Injetar opção "+ Nova Categoria" no select
     const selectCat = document.getElementById('c-categoria');
     if (selectCat) {
-        selectCat.innerHTML += `<option style="font-weight:bold;color:var(--green)" value="nova">+ Criar Nova Categoria</option>`;
+        selectCat.innerHTML += `<option style = "font-weight:bold;color:var(--green)" value = "nova">+ Criar Nova Categoria</option>`;
     }
 }
 
@@ -1199,14 +1333,14 @@ async function atualizarCategoriasDespesa() {
     const tipo = document.getElementById('d-tipo').value;
     await carregarCategorias('despesa', 'd-categoria', tipo);
     const selectCat = document.getElementById('d-categoria');
-    if (selectCat) selectCat.innerHTML += `<option style="font-weight:bold;color:var(--green)" value="nova">+ Criar Nova Categoria</option>`;
+    if (selectCat) selectCat.innerHTML += `<option style = "font-weight:bold;color:var(--green)" value = "nova">+ Criar Nova Categoria</option>`;
 }
 
 async function atualizarCategoriasReceita() {
     const tipo = document.getElementById('r-tipo').value;
     await carregarCategorias('receita', 'r-categoria', tipo);
     const selectCat = document.getElementById('r-categoria');
-    if (selectCat) selectCat.innerHTML += `<option style="font-weight:bold;color:var(--green)" value="nova">+ Criar Nova Categoria</option>`;
+    if (selectCat) selectCat.innerHTML += `<option style = "font-weight:bold;color:var(--green)" value = "nova">+ Criar Nova Categoria</option>`;
 }
 
 async function verificarNovaCategoria(selectObj, idTipoConta, idTipo, grupoOverride) {
@@ -1226,7 +1360,7 @@ async function verificarNovaCategoria(selectObj, idTipoConta, idTipo, grupoOverr
         const tipoOrigem = document.getElementById(idTipo).value;
 
         try {
-            const { sucesso, dados, erro } = await apiFetch(`/api/categorias`, {
+            const { sucesso, dados, erro } = await apiFetch(`/api/ categorias`, {
                 method: 'POST', body: JSON.stringify({ nome, tipo: tipoOrigem, grupo })
             });
 
@@ -1284,18 +1418,18 @@ async function carregarClientes(busca) {
 
     tbody.innerHTML = dados.map(c => {
         const tipoBadgeCliente = c.tipo_pessoa === 'juridica'
-            ? `<span class="badge empresarial">PJ</span>`
-            : `<span class="badge pessoal">PF</span>`;
+            ? `< span class="badge empresarial">PJ</span>`
+            : `< span class="badge pessoal">PF</span>`;
 
         const statusBadgeCliente = c.status === 'ativo'
-            ? `<span class="badge recebido">Ativo</span>`
-            : `<span class="badge cancelado">Inativo</span>`;
+            ? `< span class="badge recebido">Ativo</span>`
+            : `< span class="badge cancelado">Inativo</span>`;
 
         const localidade = [c.cidade, c.estado].filter(Boolean).join(' / ') || '—';
         const tel = c.telefone || c.whatsapp || '—';
 
         return `
-        <tr>
+    <tr>
           <td style="font-weight:600">${c.nome}</td>
           <td>${tipoBadgeCliente}</td>
           <td>${c.cpf_cnpj || '—'}</td>
@@ -1333,7 +1467,7 @@ function abrirModalCliente() {
 }
 
 async function editarCliente(id) {
-    const { dados, sucesso } = await apiFetch(`/api/clientes/${id}`);
+    const { dados, sucesso } = await apiFetch(`/api/ clientes /${id}`);
     if (!sucesso || !dados) { toast('Erro ao carregar cliente.', 'error'); return; }
 
     document.getElementById('cli-id').value = dados.id;
@@ -1449,4 +1583,105 @@ async function excluirCliente(id, nome) {
     } catch {
         toast('Erro de conexão.', 'error');
     }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PÁGINA: USUÁRIOS
+═══════════════════════════════════════════════════════════ */
+async function carregarUsuarios() {
+    const tbody = document.getElementById('tabela-usuarios');
+    if (!tbody) return;
+    tbody.innerHTML = `<tr><td colspan="5"><div class="skeleton" style="margin:12px 0"></div></td></tr>`;
+
+    const { dados, sucesso } = await apiFetch('/api/usuarios');
+    if (!sucesso || !dados || dados.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="empty-state"><div class="icon">🛡️</div><p>Nenhum usuário cadastrado</p></td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = dados.map(u => `
+    <tr>
+      <td style="font-weight:600">${u.nome}</td>
+      <td>${u.email}</td>
+      <td>${u.ativo ? '<span class="badge" style="background:var(--green);color:#fff">Ativo</span>' : '<span class="badge" style="background:var(--red);color:#fff">Inativo</span>'}</td>
+      <td>${u.ultimo_login ? new Date(u.ultimo_login).toLocaleString('pt-BR') : 'Nunca acessou'}</td>
+      <td>
+        <button class="btn btn-ghost" style="padding:4px 10px;font-size:12px" onclick="editarUsuario(${u.id})">✏️ Editar</button>
+        <button class="btn btn-ghost" style="padding:4px 10px;font-size:12px;color:var(--red)" onclick="excluirUsuario(${u.id}, '${u.nome}')">🗑️ Excluir</button>
+      </td>
+    </tr>`).join('');
+}
+
+function abrirModalUsuario() {
+    document.getElementById('form-usuario').reset();
+    document.getElementById('u-id').value = '';
+    document.getElementById('modal-usuario-titulo').textContent = '➕ Novo Usuário';
+    document.getElementById('u-senha-req').style.display = 'inline';
+    document.getElementById('u-senha').setAttribute('required', 'true');
+    document.getElementById('btn-excluir-usuario').style.display = 'none';
+    document.getElementById('modal-usuario').classList.add('open');
+}
+
+async function editarUsuario(id) {
+    const { dados, sucesso } = await apiFetch(`/api/usuarios/${id}`);
+    if (!sucesso || !dados) return toast('Erro ao carregar usuário.', 'error');
+
+    document.getElementById('u-id').value = dados.id;
+    document.getElementById('u-nome').value = dados.nome;
+    document.getElementById('u-email').value = dados.email;
+    document.getElementById('u-ativo').value = dados.ativo === false ? 'false' : 'true';
+    document.getElementById('u-senha').value = ''; // Não traz senha do banco
+    document.getElementById('u-senha').removeAttribute('required');
+    document.getElementById('u-senha-req').style.display = 'none';
+
+    document.getElementById('modal-usuario-titulo').textContent = '✏️ Editar Usuário';
+    document.getElementById('btn-excluir-usuario').style.display = 'block';
+    document.getElementById('modal-usuario').classList.add('open');
+}
+
+async function salvarUsuario(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btn-salvar-usuario');
+    btn.disabled = true; btn.textContent = 'Salvando...';
+
+    const id = document.getElementById('u-id').value;
+    const body = {
+        nome: document.getElementById('u-nome').value,
+        email: document.getElementById('u-email').value,
+        ativo: document.getElementById('u-ativo').value === 'true'
+    };
+
+    const senha = document.getElementById('u-senha').value;
+    if (senha) body.senha = senha;
+
+    try {
+        const url = id ? `/api/usuarios/${id}` : '/api/usuarios';
+        const method = id ? 'PUT' : 'POST';
+
+        const { sucesso, erro } = await apiFetch(url, { method, body: JSON.stringify(body) });
+
+        if (sucesso) {
+            toast(id ? 'Usuário atualizado!' : 'Usuário cadastrado com sucesso!');
+            fecharModal('modal-usuario');
+            carregarUsuarios();
+        } else {
+            toast(erro || 'Erro ao salvar.', 'error');
+        }
+    } catch {
+        toast('Erro de conexão.', 'error');
+    } finally {
+        btn.disabled = false; btn.textContent = '💾 Salvar Usuário';
+    }
+}
+
+async function excluirUsuario(id, nome) {
+    if (!confirm(`Deseja realmente excluir o usuário ${nome}?`)) return;
+    try {
+        const { sucesso, erro } = await apiFetch(`/api/usuarios/${id}`, { method: 'DELETE' });
+        if (sucesso) {
+            toast('Usuário excluído!');
+            if (document.getElementById('modal-usuario').classList.contains('open')) fecharModal('modal-usuario');
+            carregarUsuarios();
+        } else toast(erro || 'Erro', 'error');
+    } catch { toast('Erro de conexão.', 'error'); }
 }

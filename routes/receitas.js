@@ -36,8 +36,42 @@ router.get('/', async (req, res) => {
             query = query.gte('data', inicioMes).lt('data', fimMesStr);
         }
 
+        let dataInicioCalc = null;
+        if (inicio) dataInicioCalc = inicio;
+        else if (mes) dataInicioCalc = `${mes}-01`;
+
         const { data, error } = await query;
         if (error) throw error;
+
+        // Injetar Saldo Anterior apenas se houver um filtro de mes ou inicio, e o saldo for maior que zero
+        if (dataInicioCalc) {
+            let qReceitaAnt = supabase.from('receitas').select('valor').lt('data', dataInicioCalc).eq('status', 'recebido');
+            let qDespesaAnt = supabase.from('despesas').select('valor').lt('data', dataInicioCalc).eq('status', 'pago');
+
+            if (tipo) {
+                qReceitaAnt = qReceitaAnt.eq('tipo', tipo);
+                qDespesaAnt = qDespesaAnt.eq('tipo', tipo);
+            }
+
+            const [{ data: rAnt }, { data: dAnt }] = await Promise.all([qReceitaAnt, qDespesaAnt]);
+
+            const recTot = (rAnt || []).reduce((acc, r) => acc + parseFloat(r.valor), 0);
+            const despTot = (dAnt || []).reduce((acc, d) => acc + parseFloat(d.valor), 0);
+            const saldoAnterior = recTot - despTot;
+
+            if (saldoAnterior !== 0) {
+                data.unshift({
+                    id: 'saldo-anterior',
+                    descricao: 'Saldo Anterior (Mês Anterior)',
+                    valor: saldoAnterior,
+                    data: dataInicioCalc,
+                    tipo: tipo || 'Geral',
+                    status: 'recebido',
+                    categorias: { nome: 'Saldo Acumulado' },
+                    _isSaldoAnterior: true
+                });
+            }
+        }
 
         res.json({ sucesso: true, dados: data, total: data.length });
     } catch (err) {
