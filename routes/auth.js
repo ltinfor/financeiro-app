@@ -37,7 +37,16 @@ router.post('/login', async (req, res) => {
             .eq('email', email.toLowerCase().trim())
             .single();
 
-        if (error || !usuario) {
+        if (error) {
+            console.error('Erro de conexão/consulta ao Supabase:', error.message);
+            // Se for erro de tabela inexistente ou falha de rede/DNS
+            return res.status(503).json({
+                sucesso: false,
+                erro: 'Houve um problema ao conectar com o banco de dados. Verifique a conexão ou tente novamente mais tarde.'
+            });
+        }
+
+        if (!usuario) {
             // Mensagem genérica para não revelar se o e-mail existe
             return res.status(401).json({
                 sucesso: false,
